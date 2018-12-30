@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.1.0-ALPHA (30-12-2018)
+# Version 0.2.0-ALPHA (30-12-2018)
 #############################################################################
 
 #############################################################################
@@ -28,27 +28,33 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.1.0'
+VERSION='0.2.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
     source /etc/serverbot/serverbot.conf
 else
-    FUNCTION_METRICS='enabled'
-    FUNCTION_ALERT='enabled'
-    FUNCTION_UPDATES='enabled'
-    FUNCTION_LOGIN='disabled' # work in progress
-    FUNCTION_OUTAGE='disabled' # work in progress
+    #FUNCTION_METRICS='enabled'
+    #FUNCTION_ALERT='enabled'
+    #FUNCTION_UPDATES='enabled'
+    #FUNCTION_LOGIN='disabled' # work in progress
+    #FUNCTION_OUTAGE='disabled' # work in progress
     METHOD_TELEGRAM='disabled' # telegram won't work without a configuration file
-    METHOD_CLI='enabled'
-    METHOD_SQL='enabled'
-    METHOD_FILES='enabled'
+    #METHOD_CLI='enabled'
+    #METHOD_SQL='enabled'
+    #METHOD_MAIL='disabled'
+    #METHOD_FILES='enabled'
+
+    # alert threshold
+    THRESHOLD_LOAD='90%'
+    THRESHOLD_MEMORY='80%'
+    THRESHOLD_DISK='80%'
 
     # backup retention in number of days.
-    RETENTION_DAILY='14'
-    RETENTION_WEEKLY='180'
-    RETENTION_MONTHLY='180'
-    RETENTION_YEARLY='0'
+    #RETENTION_DAILY='14'
+    #RETENTION_WEEKLY='180'
+    #RETENTION_MONTHLY='180'
+    #RETENTION_YEARLY='0'
 fi
 
 #############################################################################
@@ -148,7 +154,8 @@ while test -n "$1"; do
             ;;
 
         *)
-            ARGUMENT_NONE='1'
+            echo "serverbot: invalid option -- '${1}'"
+            echo "Try 'serverbot --help' for more information."
             shift
             ;;
     esac
@@ -299,7 +306,7 @@ function management_self_upgrade {
                 echo
             done
         
-        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ];
+        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
             read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
             read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
 
@@ -383,8 +390,8 @@ function check_os {
         source /etc/os-release
 
         # Put distro name and version in variables
-        OPERATING_SYSTEM="$NAME"
-        OPERATING_SYSTEM_VERSION="$VERSION_ID"
+        OPERATING_SYSTEM="${NAME}"
+        OPERATING_SYSTEM_VERSION="${VERSION_ID}"
 
         # check all supported combinations of OS and version
         if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ] || \
@@ -399,7 +406,9 @@ function check_os {
         [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
         [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
         [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
-            echo '[i] Info: operating system is supported...'
+            if [ "$ARGUMENT_UPGRADE" == "1" ]; then
+                echo '[i] Info: operating system is supported...'
+            fi
         else
             echo
             echo '[!] Error: this operating system is not supported.'
@@ -468,6 +477,9 @@ function gather_server_information {
 
 function gather_metrics {
 
+    # check os
+    check_os
+
     # strip '%' of thresholds in serverbot.conf
     THRESHOLD_LOAD_NUMBER="$(echo "${THRESHOLD_LOAD}" | tr -d '%')"
     THRESHOLD_MEMORY_NUMBER="$(echo "${THRESHOLD_MEMORY}" | tr -d '%')"
@@ -514,8 +526,8 @@ function gather_metrics {
     fi
 
     # file system metrics
-    TOTAL_DISK_SIZE="$(df -h / --output=size -x tmpfs -x devtmpfs | tr -dc '1234567890GKMT.')"
-    CURRENT_DISK_USAGE="$(df -h / --output=used -x tmpfs -x devtmpfs | tr -dc '1234567890GKMT.')"
+    TOTAL_DISK_SIZE="$(df -h / --output=size -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
+    CURRENT_DISK_USAGE="$(df -h / --output=used -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
     CURRENT_DISK_PERCENTAGE="$(df / --output=pcent -x tmpfs -x devtmpfs | tr -dc '0-9')"
 }
 
@@ -532,7 +544,6 @@ function gather_updates {
     [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
     [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
     [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
-
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
@@ -560,6 +571,13 @@ function gather_updates {
 #############################################################################
 
 function method_telegram {
+    # give error when telegram is unavailable
+    if [ "${METHOD_TELEGRAM}" == 'disabled' ]; then
+        echo
+        echo '[!] Error: method Telegram is not available without Serverbot configuration file.'
+        echo
+        exit 1
+    fi
 
     # create payload for Telegram
     TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT_ID}&text=${TELEGRAM_MESSAGE}&parse_mode=Markdown&disable_web_page_preview=true"
@@ -592,7 +610,6 @@ fi
 
 # method CLI
 if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-
     # gather required server information and metrics
     gather_server_information
     gather_metrics
@@ -609,7 +626,6 @@ fi
 
 # method Telegram
 if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-
     # gather required server information and metrics
     gather_server_information
     gather_metrics
@@ -632,7 +648,6 @@ fi
 
 # method CLI
 if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-
     # gather required server information and metrics
     gather_server_information
     gather_metrics
@@ -663,7 +678,6 @@ fi
 
 # method Telegram
 if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-
     # gather required server information and metrics
     gather_server_information
     gather_metrics
@@ -674,7 +688,6 @@ if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
 
     # check whether the current server load exceeds the threshold and alert if true
     if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
-
         # create message for Telegram
         TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER LOAD*\\n\\nThe server load (${CURRENT_LOAD_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_LOAD}\\n\\n*Load average:*\\n${COMPLETE_LOAD}"
 
@@ -684,7 +697,6 @@ if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
 
     # check whether the current server memory usage exceeds the threshold and alert if true
     if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
-
         # create message for Telegram
         TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER MEMORY*\\n\\nMemory usage (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_MEMORY}\\n\\n*Memory usage:*\\n$(free -m -h)"
 
@@ -694,7 +706,6 @@ if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
 
     # check whether the current disk usaged exceeds the threshold and alert if true
     if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
-
         # create message for Telegram
         TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: FILE SYSTEM*\\n\\nDisk usage (${CURRENT_DISK_PERCENTAGE}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_DISK}\\n\\n*Filesystem info:*\\n$(df -h)"
 
@@ -711,7 +722,6 @@ fi
 
 # method CLI
 if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-
     # gather required information about updates
     gather_updates
 
@@ -734,7 +744,6 @@ fi
 
 # method Telegram
 if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-
     # gather required information about updates and server
     gather_server_information
     gather_updates
