@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.2.0-ALPHA (30-12-2018)
+# Version 0.3.0-ALPHA (31-12-2018)
 #############################################################################
 
 #############################################################################
@@ -17,32 +17,35 @@
 
 # THIS SCRIPT HAS THE FOLLOWING LAY-OUT
 # - VARIABLES
-# - ARGUMENTS
-# - MANAGEMENT OPTIONS
+# - GENERAL FUNCTIONS
+# - MANAGEMENT FUNCTIONS
+# - REQUIREMENT FUNCTIONS
 # - GATHER FUNCTIONS
-# - METHOD FUNCTIONS
 # - FEATURE FUNCTIONS
+# - METHOD FUNCTIONS
+# - MAIN FUNCTION
 
 #############################################################################
 # VARIABLES
 #############################################################################
 
 # serverbot version
-VERSION='0.2.0'
+VERSION='0.3.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
     source /etc/serverbot/serverbot.conf
 else
+    # otherwise use these default values
     #FUNCTION_METRICS='enabled'
     #FUNCTION_ALERT='enabled'
     #FUNCTION_UPDATES='enabled'
     #FUNCTION_LOGIN='disabled' # work in progress
     #FUNCTION_OUTAGE='disabled' # work in progress
-    METHOD_TELEGRAM='disabled' # telegram won't work without a configuration file
     #METHOD_CLI='enabled'
+    METHOD_TELEGRAM='disabled' # telegram won't work without a configuration file
+    METHOD_EMAIL='disabled' # e-mail won't work without a configuration file
     #METHOD_SQL='enabled'
-    #METHOD_MAIL='disabled'
     #METHOD_FILES='enabled'
 
     # alert threshold
@@ -58,114 +61,156 @@ else
 fi
 
 #############################################################################
-# ARGUMENTS
+# GENERAL FUNCTIONS
 #############################################################################
 
-# enable help, version and a cli option
-while test -n "$1"; do
-    case "$1" in
-        --version|-version|version|--v|-v)
-            echo
-            echo "ServerBot ${VERSION}"
-            echo "Copyright (C) 2018 Nozel."
-            echo
-            echo "License CC Attribution-NonCommercial-ShareAlike 4.0 Int."
-            echo
-            echo "Written by Sebas Veeke"
-            echo
-            shift
-            ;;
+function serverbot_menu {
 
-        --help|-help|help|--h|-h)
-            echo
-            echo "Usage:"
-            echo " serverbot [feature/option]... [method]..."
-            echo
-            echo "Features:"
-            echo " -m, --metrics         Show server metrics"
-            echo " -a, --alert           Show server alert status"
-            echo " -u, --updates         Show available server updates"
-            echo " -o, --outage          Check list for outage"
-            echo " -b, --backup          Backup using method"
-            echo
-            echo "Methods:"
-            echo " -c, --cli             Output [option] to command line"
-            echo " -t, --telegram        Output [option] to Telegram bot"
-            echo " -s, --sql             Only with --backup"
-            echo " -f, --files           Only with --backup"
-            echo
-            echo "Options:"
-            echo " --config     effectuate changes from serverbot config"
-            echo " --upgrade    upgrade serverbot to the latest stable version"
-            echo " --help       display this help and exit"
-            echo " --version    display version information and exit"
-            echo
-            shift
-            ;;
+    # enable help, version and a cli option
+    while test -n "$1"; do
+        case "$1" in
+            # options
+            --version)
+                echo
+                echo "ServerBot ${VERSION}"
+                echo "Copyright (C) 2018 Nozel."
+                echo
+                echo "License CC Attribution-NonCommercial-ShareAlike 4.0 Int."
+                echo
+                echo "Written by Sebas Veeke"
+                echo
+                shift
+                ;;
 
-        --config|--configuration|-config|-configuration|config|configuration)
-            ARGUMENT_CONFIGURATION='1'
-            shift
-            ;;
+            --help|-help|help|--h|-h)
+                echo
+                echo "Usage:"
+                echo " serverbot [feature/option]... [method]..."
+                echo
+                echo "Features:"
+                echo " -m, --metrics         Show server metrics"
+                echo " -a, --alert           Show server alert status"
+                echo " -u, --updates         Show available server updates"
+                echo " -o, --outage          Check list for outage"
+                echo " -b, --backup          Backup using method"
+                echo
+                echo "Output methods:"
+                echo " -c, --cli             Output [option] to command line"
+                echo " -t, --telegram        Output [option] to Telegram bot"
+                echo " -e, --email           Output [option] to e-mail"
+                echo
+                echo "Backup methods:"
+                echo " -s, --sql             Only with --backup"
+                echo " -f, --files           Only with --backup"
+                echo
+                echo "Options:"
+                echo " --cron       effectuate cron changes from serverbot config"
+                echo " --upgrade    upgrade serverbot to the latest stable version"
+                echo " --help       display this help and exit"
+                echo " --version    display version information and exit"
+                echo
+                shift
+                ;;
 
-        --upgrade|-upgrade|upgrade)
-            ARGUMENT_UPGRADE='1'
-            shift
-            ;;
+            --upgrade|-upgrade|upgrade)
+                ARGUMENT_UPGRADE='1'
+                shift
+                ;;
 
-        --metrics|-metrics|metrics|--m|-m)
-            ARGUMENT_METRICS='1'
-            shift
-            ;;
+            --cron)
+                ARGUMENT_CRON='1'
+                shift
+                ;;
 
-        --alert|-alert|alert|--a|-a)
-            ARGUMENT_ALERT='1'
-            shift
-            ;;
+            # features
+            --metrics|-metrics|metrics|--m|-m)
+                ARGUMENT_METRICS='1'
+                shift
+                ;;
 
-        --updates|-updates|updates|--u|-u)
-            ARGUMENT_UPDATES='1'
-            shift
-            ;;
+            --alert|-alert|alert|--a|-a)
+                ARGUMENT_ALERT='1'
+                shift
+                ;;
 
-        --outage|-outage|outage|--o|-o)
-            ARGUMENT_OUTAGE='1'
-            shift
-            ;;
+            --updates|-updates|updates|--u|-u)
+                ARGUMENT_UPDATES='1'
+                shift
+                ;;
 
-        --backup|-backup|backup|--b|-b)
-            ARGUMENT_BACKUP='1'
-            shift
-            ;;
+            --outage|-outage|outage|--o|-o)
+                ARGUMENT_OUTAGE='1'
+                shift
+                ;;
 
-        --cli|-cli|cli|--c|-c)
-            ARGUMENT_CLI='1'
-            shift
-            ;;
+            --backup|-backup|backup|--b|-b)
+                ARGUMENT_BACKUP='1'
+                shift
+                ;;
 
-        --telegram|-telegram|telegram|--t|-t)
-            ARGUMENT_TELEGRAM='1'
-            shift
-            ;;
+            # methods
+            --cli|-cli|cli|--c|-c)
+                ARGUMENT_CLI='1'
+                shift
+                ;;
 
-        --self-upgrade)
-            ARGUMENT_SELF_UPGRADE='1'
-            shift
-            ;;
+            --telegram|-telegram|telegram|--t|-t)
+                ARGUMENT_TELEGRAM='1'
+                shift
+                ;;
 
-        *)
-            echo "serverbot: invalid option -- '${1}'"
-            echo "Try 'serverbot --help' for more information."
-            shift
-            ;;
-    esac
-done
+            --email|-email|email|-e)
+                ARGUMENT_EMAIL='1'
+                shift
+                ;;
+
+            # other
+            --self-upgrade)
+                ARGUMENT_SELF_UPGRADE='1'
+                shift
+                ;;
+
+            *)
+                ARGUMENT_NONE='1'
+                shift
+                ;;
+        esac
+    done
+}
+
+function update_os {
+
+    # update CentOS 7
+    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
+    yum -y -q update
+    fi
+
+    # update CentOS 8+ and Fedora
+    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
+    dnf -y -q update
+    fi
+
+    # update Debian and Ubuntu
+    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
+    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
+    apt-get -qq update
+    apt-get -y -qq upgrade
+    fi
+}
 
 #############################################################################
-# MANAGEMENT OPTIONS
+# MANAGEMENT FUNCTIONS
 #############################################################################
 
-function management_configuration {
+function serverbot_cron {
 
     echo
     echo "*** UPDATING CRONJOBS ***"
@@ -213,12 +258,11 @@ function management_configuration {
     echo
     echo "[+] Restarting the cron service..."
     systemctl restart cron
-
     echo
     exit 0
 }
 
-function management_upgrade {
+function serverbot_upgrade {
 
     # create temp file for update
     TMP_INSTALL="$(mktemp)"
@@ -236,7 +280,7 @@ function management_upgrade {
     rm "${TMP_INSTALL}"
 }
 
-function management_self_upgrade {
+function serverbot_self_upgrade {
 
     # During normal installation, only one pair of token and chat ID will be
     # asked and used. If you want to use multiple Telegram Bots for the
@@ -366,10 +410,10 @@ function management_self_upgrade {
 }
 
 #############################################################################
-# GENERAL FUNCTIONS
+# REQUIREMENT FUNCTIONS
 #############################################################################
 
-function check_root {
+function requirement_root {
 
     # checking whether the script runs as root
     if [ "$EUID" -ne 0 ]; then
@@ -382,7 +426,7 @@ function check_root {
     fi
 }
 
-function check_os {
+function requirement_os {
 
     # checking whether supported operating system is installed
     # source /etc/os-release to use variables
@@ -423,7 +467,7 @@ function check_os {
     fi
 }
 
-function check_internet {
+function requirement_internet {
 
     # checking internet connection
     if ping -q -c 1 -W 1 google.com >/dev/null; then
@@ -433,34 +477,6 @@ function check_internet {
         echo '[!] Error: access to the internet is required.'
         echo
         exit 1
-    fi
-}
-
-function update_os {
-
-    # update CentOS 7
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
-    yum -y -q update
-    fi
-
-    # update CentOS 8+ and Fedora
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
-    dnf -y -q update
-    fi
-
-    # update Debian and Ubuntu
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
-    apt-get -qq update
-    apt-get -y -qq upgrade
     fi
 }
     
@@ -475,15 +491,7 @@ function gather_server_information {
     UPTIME="$(uptime -p)"
 }
 
-function gather_metrics {
-
-    # check os
-    check_os
-
-    # strip '%' of thresholds in serverbot.conf
-    THRESHOLD_LOAD_NUMBER="$(echo "${THRESHOLD_LOAD}" | tr -d '%')"
-    THRESHOLD_MEMORY_NUMBER="$(echo "${THRESHOLD_MEMORY}" | tr -d '%')"
-    THRESHOLD_DISK_NUMBER="$(echo "${THRESHOLD_DISK}" | tr -d '%')"
+function gather_metrics_cpu {
 
     # cpu and load metrics
     CORE_AMOUNT="$(grep -c 'cpu cores' /proc/cpuinfo)"
@@ -492,8 +500,13 @@ function gather_metrics {
     CURRENT_LOAD="$(< /proc/loadavg awk '{print $3}')"
     CURRENT_LOAD_PERCENTAGE="$(echo "(${CURRENT_LOAD}/${MAX_LOAD_SERVER})*100" | bc -l)"
     CURRENT_LOAD_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_LOAD_PERCENTAGE}" | tr -d '%'))"
+}
 
-    # memory metrics
+function gather_metrics_memory {
+
+    # check os
+    check_os
+
     # use older format in free when Debian 8 or Ubuntu 14.04 is used
     if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
     [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ]; then
@@ -524,11 +537,22 @@ function gather_metrics {
         CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
         CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
     fi
+}
+
+function gather_metrics_disk {
 
     # file system metrics
     TOTAL_DISK_SIZE="$(df -h / --output=size -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
     CURRENT_DISK_USAGE="$(df -h / --output=used -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
     CURRENT_DISK_PERCENTAGE="$(df / --output=pcent -x tmpfs -x devtmpfs | tr -dc '0-9')"
+}
+
+function gather_metrics_threshold {
+
+    # strip '%' of thresholds in serverbot.conf
+    THRESHOLD_LOAD_NUMBER="$(echo "${THRESHOLD_LOAD}" | tr -d '%')"
+    THRESHOLD_MEMORY_NUMBER="$(echo "${THRESHOLD_MEMORY}" | tr -d '%')"
+    THRESHOLD_DISK_NUMBER="$(echo "${THRESHOLD_DISK}" | tr -d '%')"
 }
 
 function gather_updates {
@@ -567,10 +591,17 @@ function gather_updates {
 }
 
 #############################################################################
+# FEATURE FUNCTIONS
+#############################################################################
+
+# add these here
+
+#############################################################################
 # METHOD FUNCTIONS
 #############################################################################
 
 function method_telegram {
+
     # give error when telegram is unavailable
     if [ "${METHOD_TELEGRAM}" == 'disabled' ]; then
         echo
@@ -586,268 +617,307 @@ function method_telegram {
     curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
 }
 
-#############################################################################
-# OPTION UPDATE CONFIG
-#############################################################################
+function method_email {
 
-if [ "$ARGUMENT_CONFIGURATION" == "1" ]; then
-    # effectuate changes in serverbot.conf to system
-    management_configuration
-fi
+    # planned for version 1.1
+    echo '[!] Error: method e-mail is not available yet.'
+}
 
 #############################################################################
-# OPTION UPGRADE TELEGRAMBOT
+# MAIN FUNCTION
 #############################################################################
 
-if [ "$ARGUMENT_UPGRADE" == "1" ]; then
-    # upgrade serverbot to the newest version
-    management_upgrade
-fi
+function serverbot_main {
 
-#############################################################################
-# FEATURE METRICS
-#############################################################################
+    # call case menu
+    serverbot_menu
 
-# method CLI
-if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    # gather required server information and metrics
-    gather_server_information
-    gather_metrics
-
-    # output server metrics to shell and exit
-    echo
-    echo "HOST:     ${HOSTNAME}"
-    echo "UPTIME:   ${UPTIME}"
-    echo "LOAD:     ${COMPLETE_LOAD}"
-    echo "MEMORY:   ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
-    echo "DISK:     ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    # gather required server information and metrics
-    gather_server_information
-    gather_metrics
-
-    # add values to method_telegram variables
-    TELEGRAM_CHAT_ID="${METRICS_CHAT}"
-    TELEGRAM_URL="${METRICS_URL}"
-    TELEGRAM_MESSAGE="$(echo -e "*Host*:        ${HOSTNAME}\\n*UPTIME*:  ${UPTIME}\\n\\n*Load*:         ${COMPLETE_LOAD}\\n*Memory*:  ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:          ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-fi
-
-#############################################################################
-# FEATURE ALERT
-#############################################################################
-
-# method CLI
-if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    # gather required server information and metrics
-    gather_server_information
-    gather_metrics
-
-    # check whether the current server load exceeds the threshold and alert if true
-    # and output server alert status to shell
-    echo
-    if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
-        echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
-    else
-        echo -e "[i] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_LOAD}."
-    fi
-
-    if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
-        echo -e "[!] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_MEMORY}."
-    else
-        echo -e "[i] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_MEMORY}."
-    fi
-
-    if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
-        echo -e "[!] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% exceeds the threshold of ${THRESHOLD_DISK}."
-    else
-        echo -e "[i] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% does not exceed the threshold of ${THRESHOLD_DISK}."
-    fi
-    # exit when done
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    # gather required server information and metrics
-    gather_server_information
-    gather_metrics
-
-    # add values to method_telegram variables
-    TELEGRAM_CHAT_ID="${ALERT_CHAT}"
-    TELEGRAM_URL="${ALERT_URL}"
-
-    # check whether the current server load exceeds the threshold and alert if true
-    if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
-        # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER LOAD*\\n\\nThe server load (${CURRENT_LOAD_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_LOAD}\\n\\n*Load average:*\\n${COMPLETE_LOAD}"
-
-        # call method_telegram
-        method_telegram
-    fi
-
-    # check whether the current server memory usage exceeds the threshold and alert if true
-    if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
-        # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER MEMORY*\\n\\nMemory usage (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_MEMORY}\\n\\n*Memory usage:*\\n$(free -m -h)"
-
-        # call method_telegram
-        method_telegram
-    fi
-
-    # check whether the current disk usaged exceeds the threshold and alert if true
-    if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
-        # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: FILE SYSTEM*\\n\\nDisk usage (${CURRENT_DISK_PERCENTAGE}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_DISK}\\n\\n*Filesystem info:*\\n$(df -h)"
-
-        # call method_telegram
-        method_telegram
-    fi
-    # exit when done
-    exit 0
-fi
-
-#############################################################################
-# FEATURE UPDATES
-#############################################################################
-
-# method CLI
-if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    # gather required information about updates
-    gather_updates
-
-    # notify user when there are no updates
-    if [ -z "$AVAILABLE_UPDATES" ]; then
+    # undefined argument given
+    if [ "$ARGUMENT_NONE" == "1" ]; then
         echo
-        echo "There are no updates available."
+        echo "serverbot: invalid option -- '${1}'"
+        echo "Try 'serverbot --help' for more information."
+        echo
+        exit 1
+    fi
+
+    ### SOME WAY OF CHECKING VALIDITY OF INPUT HERE ###
+
+    # option cron
+    if [ "$ARGUMENT_CRON" == "1" ]; then
+        serverbot_cron
+    fi
+
+    # option upgrade
+    if [ "$ARGUMENT_UPGRADE" == "1" ]; then
+        serverbot_upgrade
+    fi
+
+    # feature metrics; method cli
+    if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        # gather required server information and metrics
+        gather_server_information
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+
+        # output server metrics to shell and exit
+        echo
+        echo "HOST:     ${HOSTNAME}"
+        echo "UPTIME:   ${UPTIME}"
+        echo "LOAD:     ${COMPLETE_LOAD}"
+        echo "MEMORY:   ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
+        echo "DISK:     ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
+        exit 0
+    fi
+
+    # feature metrics; method Telegram
+    if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        # gather required server information and metrics
+        gather_server_information
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+
+        # add values to method_telegram variables
+        TELEGRAM_CHAT_ID="${METRICS_CHAT}"
+        TELEGRAM_URL="${METRICS_URL}"
+        TELEGRAM_MESSAGE="$(echo -e "*Host*:        ${HOSTNAME}\\n*UPTIME*:  ${UPTIME}\\n\\n*Load*:         ${COMPLETE_LOAD}\\n*Memory*:  ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:          ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
+
+        # call method_telegram
+        method_telegram
+
+        # exit when done
+        exit 0
+    fi
+
+    # feature metrics; method email
+    if [ "$ARGUMENT_METRICS" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature alert; method cli
+    if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        # gather required server information and metrics
+        gather_server_information
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+        gather_metrics_threshold
+
+        # check whether the current server load exceeds the threshold and alert if true
+        # and output server alert status to shell
+        echo
+        if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
+            echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
+        else
+            echo -e "[i] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_LOAD}."
+        fi
+
+        if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
+            echo -e "[!] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_MEMORY}."
+        else
+            echo -e "[i] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_MEMORY}."
+        fi
+
+        if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
+            echo -e "[!] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% exceeds the threshold of ${THRESHOLD_DISK}."
+        else
+            echo -e "[i] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% does not exceed the threshold of ${THRESHOLD_DISK}."
+        fi
+        # exit when done
+        exit 0
+    fi
+
+    # feature alert; method telegram
+    if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        # gather required server information and metrics
+        gather_server_information
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+        gather_metrics_threshold
+
+        # add values to method_telegram variables
+        TELEGRAM_CHAT_ID="${ALERT_CHAT}"
+        TELEGRAM_URL="${ALERT_URL}"
+
+        # check whether the current server load exceeds the threshold and alert if true
+        if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
+            # create message for Telegram
+            TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER LOAD*\\n\\nThe server load (${CURRENT_LOAD_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_LOAD}\\n\\n*Load average:*\\n${COMPLETE_LOAD}"
+
+            # call method_telegram
+            method_telegram
+        fi
+
+        # check whether the current server memory usage exceeds the threshold and alert if true
+        if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
+            # create message for Telegram
+            TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER MEMORY*\\n\\nMemory usage (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_MEMORY}\\n\\n*Memory usage:*\\n$(free -m -h)"
+
+            # call method_telegram
+            method_telegram
+        fi
+
+        # check whether the current disk usaged exceeds the threshold and alert if true
+        if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
+            # create message for Telegram
+            TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: FILE SYSTEM*\\n\\nDisk usage (${CURRENT_DISK_PERCENTAGE}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_DISK}\\n\\n*Filesystem info:*\\n$(df -h)"
+
+            # call method_telegram
+            method_telegram
+        fi
+        # exit when done
+        exit 0
+    fi
+
+    # feature alert; method email
+    if [ "$ARGUMENT_ALERT" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature updates; method cli
+    if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        # gather required information about updates
+        gather_updates
+
+        # notify user when there are no updates
+        if [ -z "$AVAILABLE_UPDATES" ]; then
+            echo
+            echo "There are no updates available."
+            echo
+            exit 0
+        fi
+
+        # notify user when there are updates available
+        echo
+        echo "The following updates are available:"
+        echo
+        echo "${AVAILABLE_UPDATES}"
         echo
         exit 0
     fi
 
-    # notify user when there are updates available
-    echo
-    echo "The following updates are available:"
-    echo
-    echo "${AVAILABLE_UPDATES}"
-    echo
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    # gather required information about updates and server
-    gather_server_information
-    gather_updates
-
-    # create updates payload to sent to telegram API
-    UPDATES_PAYLOAD="chat_id=${UPDATES_CHAT}&text=$(echo -e "${UPDATES_MESSAGE}")&parse_mode=Markdown&disable_web_page_preview=true"
-
-    # sent updates payload to Telegram API
-    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${UPDATES_PAYLOAD}" "${UPDATES_URL}" > /dev/null 2>&1 &
-
-    # do nothing if there are no updates
-    if [ -z "$AVAILABLE_UPDATES" ]; then
-        exit 0
-    else
-        # if update list length is less than 4000 characters, then sent update list
-        if [ "$LENGTH_UPDATES" -lt "4000" ]; then
-            UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*:\n\n${AVAILABLE_UPDATES}"
-        fi
-
-        # if update list length is greater than 4000 characters, don't sent update list
-        if [ "$LENGTH_UPDATES" -gt "4000" ]; then
-            UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
-        fi
+    # feature updates; method telegram
+    if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        # gather required information about updates and server
+        gather_server_information
+        gather_updates
 
         # create updates payload to sent to telegram API
         UPDATES_PAYLOAD="chat_id=${UPDATES_CHAT}&text=$(echo -e "${UPDATES_MESSAGE}")&parse_mode=Markdown&disable_web_page_preview=true"
 
         # sent updates payload to Telegram API
         curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${UPDATES_PAYLOAD}" "${UPDATES_URL}" > /dev/null 2>&1 &
+
+        # do nothing if there are no updates
+        if [ -z "$AVAILABLE_UPDATES" ]; then
+            exit 0
+        else
+            # if update list length is less than 4000 characters, then sent update list
+            if [ "$LENGTH_UPDATES" -lt "4000" ]; then
+                UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*:\n\n${AVAILABLE_UPDATES}"
+            fi
+
+            # if update list length is greater than 4000 characters, don't sent update list
+            if [ "$LENGTH_UPDATES" -gt "4000" ]; then
+                UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
+            fi
+
+            # create updates payload to sent to telegram API
+            UPDATES_PAYLOAD="chat_id=${UPDATES_CHAT}&text=$(echo -e "${UPDATES_MESSAGE}")&parse_mode=Markdown&disable_web_page_preview=true"
+
+            # sent updates payload to Telegram API
+            curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${UPDATES_PAYLOAD}" "${UPDATES_URL}" > /dev/null 2>&1 &
+        fi
+        exit 0
     fi
-    exit 0
-fi
+
+    # feature updates; method email
+    if [ "$ARGUMENT_UPDATES" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature login; method cli
+    if [ "$ARGUMENT_LOGIN" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature login; method telegram
+    if [ "$ARGUMENT_LOGIN" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature login; method email
+    if [ "$ARGUMENT_LOGIN" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature outage; method cli
+    if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature outage; method telegram
+    if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature outage; method email
+    if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method all
+    if [ "$ARGUMENT_BACKUP" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method sql
+    if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_SQL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method files
+    if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_FILES" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method all; method cli
+    if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method all; method telegram
+    if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+
+    # feature backup; method email
+    if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_EMAIL" == "1" ]; then
+        echo "Oops! This function has not been implemented yet!"
+        exit 0
+    fi
+}
 
 #############################################################################
-# FEATURE LOGIN
+# CALL MAIN FUNCTION
 #############################################################################
 
-# method CLI
-if [ "$ARGUMENT_LOGIN" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_LOGIN" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-#############################################################################
-# FEATURE OUTAGE
-#############################################################################
-
-# method CLI
-if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-#############################################################################
-# FEATURE BACKUP
-#############################################################################
-
-# all
-if [ "$ARGUMENT_BACKUP" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# SQL only
-if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_SQL" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# files only
-if [ "$ARGUMENT_OUTAGE" == "1" ] && [ "$ARGUMENT_FILES" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# method CLI
-if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_CLI" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-# method Telegram
-if [ "$ARGUMENT_BACKUP" == "1" ] && [ "$ARGUMENT_TELEGRAM" == "1" ]; then
-    echo "Oops! This function has not been implemented yet!"
-    exit 0
-fi
-
-#############################################################################
-# NO ARGUMENT GIVEN
-#############################################################################
-
-if [ "$ARGUMENT_NONE" == "1" ]; then
-    bash /usr/local/bin/serverbot --help
-    exit 0
-fi
+# call main function
+serverbot_main
