@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.4.0-ALPHA (01-01-2019)
+# Version 0.4.1-ALPHA (02-01-2019)
 #############################################################################
 
 #############################################################################
@@ -30,7 +30,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.4.0'
+VERSION='0.4.1'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -331,9 +331,9 @@ function serverbot_self_upgrade {
 
     # check whether requirements are met
     echo
-    check_root
-    check_os
-    check_internet
+    requirement_root
+    requirement_os
+    requirement_internet
 
     # gather configuration settings if serverbot.conf is absent, otherwise use serverbot.conf
     if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -438,9 +438,9 @@ function serverbot_self_upgrade {
     fi
 
     # install latest version serverbot
-    echo "[+] Installing latest version of telegrambot..."
-    wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/telegrambot.sh -O /usr/local/bin/serverbot
-    chmod 700 /usr/local/bin/telegrambot
+    echo "[+] Installing latest version of serverbot..."
+    wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
+    chmod 755 /usr/local/bin/serverbot
 
     # creating or updating cronjobs
     /bin/bash /usr/local/bin/serverbot --config
@@ -542,7 +542,7 @@ function gather_metrics_cpu {
 function gather_metrics_memory {
 
     # check os
-    check_os
+    requirement_os
 
     # use older format in free when Debian 8 or Ubuntu 14.04 is used
     if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
@@ -593,6 +593,9 @@ function gather_metrics_threshold {
 }
 
 function gather_updates {
+
+    # check os
+    requirement_os
 
     if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
@@ -686,6 +689,7 @@ function feature_alert_cli {
     else
         echo -e "[i] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% does not exceed the threshold of ${THRESHOLD_DISK}."
     fi
+
     # exit when done
     exit 0
 }
@@ -735,25 +739,20 @@ function feature_updates_cli {
         echo
         echo "There are no updates available."
         echo
-        exit 0
+    else
+        # notify user when there are updates available
+        echo
+        echo "The following updates are available:"
+        echo
+        echo "${AVAILABLE_UPDATES}"
+        echo
     fi
 
-    # notify user when there are updates available
-    echo
-    echo "The following updates are available:"
-    echo
-    echo "${AVAILABLE_UPDATES}"
-    echo
+    # exit when done
     exit 0
 }
 
 function feature_updates_telegram {
-    
-    # create updates payload to sent to telegram API
-    UPDATES_PAYLOAD="chat_id=${UPDATES_CHAT}&text=$(echo -e "${UPDATES_MESSAGE}")&parse_mode=Markdown&disable_web_page_preview=true"
-
-    # sent updates payload to Telegram API
-    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${UPDATES_PAYLOAD}" "${UPDATES_URL}" > /dev/null 2>&1 &
 
     # do nothing if there are no updates
     if [ -z "$AVAILABLE_UPDATES" ]; then
@@ -761,20 +760,19 @@ function feature_updates_telegram {
     else
         # if update list length is less than 4000 characters, then sent update list
         if [ "$LENGTH_UPDATES" -lt "4000" ]; then
-            UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*:\n\n${AVAILABLE_UPDATES}"
+            TELEGRAM_MESSAGE="There are updates available on *${HOSTNAME}*:\n\n${AVAILABLE_UPDATES}"
         fi
 
         # if update list length is greater than 4000 characters, don't sent update list
         if [ "$LENGTH_UPDATES" -gt "4000" ]; then
-            UPDATES_MESSAGE="There are updates available on *${HOSTNAME}*. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
+            TELEGRAM_MESSAGE="There are updates available on *${HOSTNAME}*. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
         fi
 
-        # create updates payload to sent to telegram API
-        UPDATES_PAYLOAD="chat_id=${UPDATES_CHAT}&text=$(echo -e "${UPDATES_MESSAGE}")&parse_mode=Markdown&disable_web_page_preview=true"
-
-        # sent updates payload to Telegram API
-        curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${UPDATES_PAYLOAD}" "${UPDATES_URL}" > /dev/null 2>&1 &
+        # call method_telegram
+        method_telegram
     fi
+
+    # exit when done
     exit 0
 }
 
@@ -789,7 +787,7 @@ function method_telegram {
         echo
         echo '[!] Error: method Telegram is not available without Serverbot configuration file.'
         echo
-        exit 1
+        exit 0
     fi
 
     # create payload for Telegram
@@ -835,7 +833,7 @@ function serverbot_main {
         feature_metrics_telegram
     # feature metrics; method email
     elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-
+        feature_not_yet_implemented
     # feature alert; method cli
     elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
         gather_server_information
@@ -863,6 +861,7 @@ function serverbot_main {
     elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
         gather_server_information
         gather_updates
+        feature_updates_telegram
     # feature updates; method email
     elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
         feature_not_yet_implemented
@@ -928,6 +927,7 @@ function serverbot_main {
         echo
         exit 1
     fi
+}
 
 #############################################################################
 # CALL MAIN FUNCTION
