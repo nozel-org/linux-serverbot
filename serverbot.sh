@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.5.0-ALPHA (03-01-2019)
+# Version 0.6.0-ALPHA (04-01-2019)
 #############################################################################
 
 #############################################################################
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.5.0'
+VERSION='0.6.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -484,55 +484,50 @@ function serverbot_cron {
     if [ "$SERVERBOT_UPGRADE" == 'yes' ]; then
         echo "[+] Updating cronjob for automatic upgrade"
         echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --upgrade" > /etc/cron.d/serverbot_auto_upgrade
-    fi
-
+    # update overview cronjob if enabled
+    elif [ "$OVERVIEW_ENABLED" == 'yes' ] && [ "$METRICS_TELEGRAM" == 'yes' ]; then
+        echo "[+] Updating Overview on Telegram cronjob"
+        echo -e "# This cronjob activates Overview on Telegram on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
+    elif [ "$OVERVIEW_ENABLED" == 'yes' ] && [ "$METRICS_EMAIL" == 'yes' ]; then
+        echo "[+] Updating Overview on email cronjob"
+        echo -e "# This cronjob activates Overview on email on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
     # update metrics cronjob if enabled
-    if [ "$METRICS_ENABLED" == 'yes' ] && [ "$METRICS_TELEGRAM" == 'yes' ]; then
+    elif [ "$METRICS_ENABLED" == 'yes' ] && [ "$METRICS_TELEGRAM" == 'yes' ]; then
         echo "[+] Updating Metrics on Telegram cronjob"
         echo -e "# This cronjob activates Metrics on Telegram on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
     elif [ "$METRICS_ENABLED" == 'yes' ] && [ "$METRICS_EMAIL" == 'yes' ]; then
         echo "[+] Updating Metrics on email cronjob"
         echo -e "# This cronjob activates Metrics on email on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
-    fi
-
     # update alert cronjob if enabled
-    if [ "$ALERT_ENABLED" == 'yes' ] && [ "$ALERT_TELEGRAM" == 'yes' ]; then
+    elif [ "$ALERT_ENABLED" == 'yes' ] && [ "$ALERT_TELEGRAM" == 'yes' ]; then
         echo "[+] Updating Alert on Telegram cronjob"
         echo -e "# This cronjob activates Alert on Telegram on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
     elif [ "$ALERT_ENABLED" == 'yes' ] && [ "$ALERT_EMAIL" == 'yes' ]; then
         echo "[+] Updating Alert on email cronjob"
         echo -e "# This cronjob activates Alert on email on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
-    fi
-
     # update updates cronjob if enabled
-    if [ "$UPDATES_ENABLED" == 'yes' ] && [ "$UPDATES_TELEGRAM" == 'yes' ]; then
+    elif [ "$UPDATES_ENABLED" == 'yes' ] && [ "$UPDATES_TELEGRAM" == 'yes' ]; then
         echo "[+] Updating Updates on Telegram cronjob"
         echo -e "# This cronjob activates Updates on Telegram on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
     elif [ "$UPDATES_ENABLED" == 'yes' ] && [ "$UPDATES_EMAIL" == 'yes' ]; then
         echo "[+] Updating Updates on email cronjob"
         echo -e "# This cronjob activates Updates on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
-    fi
-
     # update login cronjob if enabled
-    if [ "$LOGIN_ENABLED" == 'yes' ] && [ "$LOGIN_TELEGRAM" == 'yes' ]; then
+    elif [ "$LOGIN_ENABLED" == 'yes' ] && [ "$LOGIN_TELEGRAM" == 'yes' ]; then
         echo "[+] Updating Login on Telegram cronjob"
         echo -e "# This cronjob activates Login on Telegram on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
     elif [ "$LOGIN_ENABLED" == 'yes' ] && [ "$LOGIN_EMAIL" == 'yes' ]; then
         echo "[+] Updating Login on email cronjob"
         echo -e "# This cronjob activates Login on email on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
-    fi
-
     # update outage cronjob if enabled
-    if [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
-        echo "[+] Updating Outage on Telegram cronjob"
-        echo -e "# This cronjob activates Outage on Telegram on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
-    elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
-        echo "[+] Updating Outage on email cronjob"
-        echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
-    fi
-
+    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
+    #    echo "[+] Updating Outage on Telegram cronjob"
+    #    echo -e "# This cronjob activates Outage on Telegram on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
+    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
+    #    echo "[+] Updating Outage on email cronjob"
+    #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
     # update backup cronjob if enabled
-    if [ "$BACKUP_ENABLED" == 'yes' ]; then
+    elif [ "$BACKUP_ENABLED" == 'yes' ]; then
         echo "[+] Updating Backup cronjob"
         echo -e "# This cronjob activates Backup on the the chosen schedule\n\n${BACKUP_CRON} root /usr/local/bin/serverbot --backup" > /etc/cron.d/serverbot_backup
     fi
@@ -730,7 +725,7 @@ function feature_overview_telegram {
     TELEGRAM_URL="${OVERVIEW_URL}"
 
     # create message for telegram
-    TELEGRAM_MESSAGE="$(echo -e "*Host*:              ${HOSTNAME}\\n*OS*:                   ${OPERATING_SYSTEM}\\n*Distro*:            ${DISTRO} ${DISTRO_VERSION}\\n*Kernel*:            ${KERNEL_NAME} ${KERNEL_VERSION}\\n*Architecture*:   ${UPTIME}\\n*Uptime*:            ${UPTIME}\\n\\n*Internal IP*:\\n${EXTERNAL_IP_ADDRESSES}\\n\\n*External IP*:\\n"${EXTERNAL_IP_ADDRESSES}"\\n\\n*Load*:           ${COMPLETE_LOAD}\\n*Memory*:         ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:           ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
+    TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:                  <code>${HOSTNAME}</code>\\n<b>OS</b>:                      <code>${OPERATING_SYSTEM}</code>\\n<b>Distro</b>:               <code>${DISTRO} ${DISTRO_VERSION}</code>\\n<b>Kernel</b>:              <code>${KERNEL_NAME} ${KERNEL_VERSION}</code>\\n<b>Architecture</b>:  <code>${ARCHITECTURE}</code>\\n<b>Uptime</b>:             <code>${UPTIME}</code>\\n\\n<b>Internal IP</b>:\\n<code>${INTERNAL_IP_ADDRESS}</code>\\n\\n<b>External IP</b>:\\n<code>${EXTERNAL_IP_ADDRESS}</code>\\n\\n<b>Load</b>:                  <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:           <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:                   <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
 
     # call method_telegram
     method_telegram
@@ -760,7 +755,7 @@ function feature_metrics_telegram {
     TELEGRAM_URL="${METRICS_URL}"
 
     # create message for telegram
-    TELEGRAM_MESSAGE="$(echo -e "*Host*:        ${HOSTNAME}\\n*Uptime*:  ${UPTIME}\\n\\n*Load*:         ${COMPLETE_LOAD}\\n*Memory*:  ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:          ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
+    TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:        <code>${HOSTNAME}</code>\\n<b>Uptime</b>:  <code>${UPTIME}</code>\\n\\n<b>Load</b>:         <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:  <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:          <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
 
     # call method_telegram
     method_telegram
@@ -805,7 +800,7 @@ function feature_alert_telegram {
     # check whether the current server load exceeds the threshold and alert if true
     if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
         # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER LOAD*\\n\\nThe server load (${CURRENT_LOAD_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_LOAD}\\n\\n*Load average:*\\n${COMPLETE_LOAD}"
+        TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: SERVER LOAD</b>\\n\\nThe server load (<code>${CURRENT_LOAD_PERCENTAGE_ROUNDED}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_LOAD}</code>\\n\\n<b>Load average:</b>\\n<code>${COMPLETE_LOAD}</code>")"
 
         # call method_telegram
         method_telegram
@@ -814,7 +809,7 @@ function feature_alert_telegram {
     # check whether the current server memory usage exceeds the threshold and alert if true
     if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
         # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: SERVER MEMORY*\\n\\nMemory usage (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_MEMORY}\\n\\n*Memory usage:*\\n$(free -m -h)"
+        TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: SERVER MEMORY</b>\\n\\nMemory usage (<code>${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_MEMORY}</code>\\n\\n<b>Memory usage:</b>\\n<code>$(free -m -h)</code>")"
 
         # call method_telegram
         method_telegram
@@ -823,7 +818,7 @@ function feature_alert_telegram {
     # check whether the current disk usaged exceeds the threshold and alert if true
     if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
         # create message for Telegram
-        TELEGRAM_MESSAGE="\xE2\x9A\xA0 *ALERT: FILE SYSTEM*\\n\\nDisk usage (${CURRENT_DISK_PERCENTAGE}%) on *${HOSTNAME}* exceeds the threshold of ${THRESHOLD_DISK}\\n\\n*Filesystem info:*\\n$(df -h)"
+        TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: FILE SYSTEM</b>\\n\\nDisk usage (<code>${CURRENT_DISK_PERCENTAGE}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_DISK}</code>\\n\\n<b>Filesystem info:</b>\\n<code>$(df -h)</code>")"
 
         # call method_telegram
         method_telegram
@@ -862,12 +857,12 @@ function feature_updates_telegram {
     else
         # if update list length is less than 4000 characters, then sent update list
         if [ "$LENGTH_UPDATES" -lt "4000" ]; then
-            TELEGRAM_MESSAGE="There are updates available on *${HOSTNAME}*:\n\n${AVAILABLE_UPDATES}"
+            TELEGRAM_MESSAGE="There are updates available on <b>${HOSTNAME}</b>:\n\n${AVAILABLE_UPDATES}"
         fi
 
         # if update list length is greater than 4000 characters, don't sent update list
         if [ "$LENGTH_UPDATES" -gt "4000" ]; then
-            TELEGRAM_MESSAGE="There are updates available on *${HOSTNAME}*. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
+            TELEGRAM_MESSAGE="There are updates available on <b>${HOSTNAME}</b>. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
         fi
 
         # call method_telegram
@@ -890,7 +885,7 @@ function method_telegram {
     fi
 
     # create payload for Telegram
-    TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT_ID}&text=${TELEGRAM_MESSAGE}&parse_mode=Markdown&disable_web_page_preview=true"
+    TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT_ID}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
 
     # sent payload to Telegram API and exit
     curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" #> /dev/null 2>&1 &
