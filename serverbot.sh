@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.4.1-ALPHA (02-01-2019)
+# Version 0.5.0-ALPHA (03-01-2019)
 #############################################################################
 
 #############################################################################
@@ -17,20 +17,23 @@
 
 # THIS SCRIPT HAS THE FOLLOWING LAY-OUT
 # - VARIABLES
+# - ARGUMENTS
 # - GENERAL FUNCTIONS
-# - MANAGEMENT FUNCTIONS
 # - REQUIREMENT FUNCTIONS
+# - ERROR FUNCTIONS
 # - GATHER FUNCTIONS
+# - MANAGEMENT FUNCTIONS
 # - FEATURE FUNCTIONS
 # - METHOD FUNCTIONS
 # - MAIN FUNCTION
+# - CALL MAIN FUNCTION
 
 #############################################################################
 # VARIABLES
 #############################################################################
 
 # serverbot version
-VERSION='0.4.1'
+VERSION='0.5.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -65,7 +68,7 @@ else
 fi
 
 #############################################################################
-# PASS ARGUMENTS TO VARIABLES
+# ARGUMENTS
 #############################################################################
 
 # enable help, version and a cli option
@@ -90,13 +93,12 @@ while test -n "$1"; do
             echo " serverbot [feature/option]... [method]..."
             echo
             echo "Features:"
+            echo " -o, --overview        Show server overview"
             echo " -m, --metrics         Show server metrics"
             echo " -a, --alert           Show server alert status"
             echo " -u, --updates         Show available server updates"
-            echo " -o, --outage          Check list for outage"
+            #echo " -o, --outage          Check list for outage"
             echo " -b, --backup          Backup sql and files"
-            echo " -f, --files           Backup only files"
-            echo " -s, --sql             Backup only sql"
             echo
             echo "Methods:"
             echo " -c, --cli             Output [feature] to command line"
@@ -114,53 +116,48 @@ while test -n "$1"; do
             ;;
 
         # features
-        --metrics|-metrics|metrics|-m)
+        --overview|overview|-o)
+            ARGUMENT_OVERVIEW='1'
+            shift
+            ;;
+
+        --metrics|metrics|-m)
             ARGUMENT_METRICS='1'
             shift
             ;;
 
-        --alert|-alert|alert|-a)
+        --alert|alert|-a)
             ARGUMENT_ALERT='1'
             shift
             ;;
 
-        --updates|-updates|updates|-u)
+        --updates|updates|-u)
             ARGUMENT_UPDATES='1'
             shift
             ;;
 
-        --outage|-outage|outage|-o)
-            ARGUMENT_OUTAGE='1'
-            shift
-            ;;
+        #--outage|outage|-o)
+        #    ARGUMENT_OUTAGE='1'
+        #    shift
+        #    ;;
 
-        --backup|-backup|backup|-b)
-            ARGUMENT_BACKUP='1'
-            shift
-            ;;
-
-        --files|-files|files|-f)
-            ARGUMENT_BACKUP='1'
-            shift
-            ;;
-
-        --sql|-sql|sql|-s)
+        --backup|backup|-b)
             ARGUMENT_BACKUP='1'
             shift
             ;;
 
         # methods
-        --cli|-cli|cli|-c)
+        --cli|cli|-c)
             ARGUMENT_CLI='1'
             shift
             ;;
 
-        --telegram|-telegram|telegram|-t)
+        --telegram|telegram|-t)
             ARGUMENT_TELEGRAM='1'
             shift
             ;;
 
-        --email|-email|email|-e)
+        --email|email|-e)
             ARGUMENT_EMAIL='1'
             shift
             ;;
@@ -176,7 +173,7 @@ while test -n "$1"; do
             shift
             ;;
 
-        --upgrade|-upgrade|upgrade)
+        --upgrade)
             ARGUMENT_UPGRADE='1'
             shift
             ;;
@@ -201,28 +198,276 @@ done
 function update_os {
 
     # update CentOS 7
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
     yum -y -q update
     fi
 
     # update CentOS 8+ and Fedora
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
     dnf -y -q update
     fi
 
     # update Debian and Ubuntu
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
     apt-get -qq update
     apt-get -y -qq upgrade
+    fi
+}
+
+#############################################################################
+# REQUIREMENT FUNCTIONS
+#############################################################################
+
+function requirement_root {
+
+    # checking whether the script runs as root
+    if [ "$EUID" -ne 0 ]; then
+        echo
+        echo '[!] Error: this script should run with root privileges.'
+        echo
+        exit 1
+    else
+        echo '[i] Info: script has correct privileges...'
+    fi
+}
+
+function requirement_os {
+
+    # checking whether supported operating system is installed
+    # source /etc/os-release to use variables
+    if [ -f /etc/os-release ]; then
+        source /etc/os-release
+
+        # put distro name and version in variables
+        DISTRO="${NAME}"
+        DISTRO_VERSION="${VERSION_ID}"
+
+        # check all supported combinations of OS and version
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+            if [ "$ARGUMENT_UPGRADE" == '1' ]; then
+                echo '[i] Info: operating system is supported...'
+            fi
+        else
+            error_os_not_supported
+        fi
+    else
+        error_os_not_supported
+    fi
+}
+
+function requirement_internet {
+
+    # checking internet connection
+    if ping -q -c 1 -W 1 google.com >/dev/null; then
+        echo '[i] Info: is connected to the internet...'
+    else
+        echo
+        echo '[!] Error: access to the internet is required.'
+        echo
+        exit 1
+    fi
+}
+
+function requirement_argument_validity {
+
+    # check whether a argument was given
+    if [ $# == 0 ]; then
+        error_invalid_option
+    fi
+
+    # check whether given arguments are compatible
+    #if [ "${ARGUMENT_METRICS}" == '1' ]; && { [ "${ARGUMENT_ALERT}" == '1' ] || [ "${ARGUMENT_UPDATES}" == '1' ] || [ "${ARGUMENT_OUTAGE}" == '1' ] || [ "${ARGUMENT_BACKUP}" == '1' ]; } then
+    # } && [ "${VAR3}" == 'yes' ]; then
+}
+
+#############################################################################
+# ERROR FUNCTIONS
+#############################################################################
+
+function error_invalid_option {
+
+    echo
+    echo "serverbot: invalid option -- '$@'"
+    echo "Try 'serverbot --help' for more information."
+    echo
+    exit 1
+}
+
+function error_not_yet_implemented {
+
+    echo "[!] Error: this feature has not been implemented yet."
+    exit 1
+}
+
+function error_os_not_supported {
+
+    echo
+    echo '[!] Error: this operating system is not supported.'
+    echo
+    exit 1
+}
+
+function error_method_not_available {
+
+    echo
+    echo '[!] Error: this method is not available without Serverbot configuration file.'
+    echo
+    exit 1
+}
+
+#############################################################################
+# GATHER FUNCTIONS
+#############################################################################
+
+function gather_information_server {
+
+    # server information
+    HOSTNAME="$(uname -n)"
+    OPERATING_SYSTEM="$(uname -o)"
+    KERNEL_NAME="$(uname -s)"
+    KERNEL_VERSION="$(uname -r)"
+    ARCHITECTURE="$(uname -m)"
+    UPTIME="$(uptime -p)"
+}
+
+function gather_information_network {
+
+    # internal IP address information
+    INTERNAL_IP_ADDRESS="$(hostname -I)"
+
+    # external IP address information
+    EXTERNAL_IP_ADDRESS="$(curl -s ipecho.net/plain)"
+}
+
+function gather_information_distro {
+
+    # get os information from os-release
+    source /etc/os-release
+
+    # put distro name and version in variables
+    DISTRO="${NAME}"
+    DISTRO_VERSION="${VERSION_ID}"
+}
+
+function gather_metrics_cpu {
+
+    # cpu and load metrics
+    CORE_AMOUNT="$(grep -c 'cpu cores' /proc/cpuinfo)"
+    MAX_LOAD_SERVER="${CORE_AMOUNT}.00"
+    COMPLETE_LOAD="$(< /proc/loadavg awk '{print $1" "$2" "$3}')"
+    CURRENT_LOAD="$(< /proc/loadavg awk '{print $3}')"
+    CURRENT_LOAD_PERCENTAGE="$(echo "(${CURRENT_LOAD}/${MAX_LOAD_SERVER})*100" | bc -l)"
+    CURRENT_LOAD_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_LOAD_PERCENTAGE}" | tr -d '%'))"
+}
+
+function gather_metrics_memory {
+
+    # check os
+    requirement_os
+
+    # use older format in free when Debian 8 or Ubuntu 14.04 is used
+    if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ]; then
+        TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
+        FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
+        BUFFERS_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
+        CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $7}')"
+        USED_MEMORY="$(echo "(${TOTAL_MEMORY}-${FREE_MEMORY}-${BUFFERS_MEMORY}-${CACHED_MEMORY})" | bc -l)"
+        CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
+        CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
+    fi
+
+    # use newer format in free when CentOS 7+, Debian 9+ or Ubuntu 16.04+ is used
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+        TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
+        FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
+        BUFFERS_CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
+        USED_MEMORY="$(echo "(${TOTAL_MEMORY}-${FREE_MEMORY}-${BUFFERS_CACHED_MEMORY})" | bc -l)"
+        CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
+        CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
+    fi
+}
+
+function gather_metrics_disk {
+
+    # file system metrics
+    TOTAL_DISK_SIZE="$(df -h / --output=size -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
+    CURRENT_DISK_USAGE="$(df -h / --output=used -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
+    CURRENT_DISK_PERCENTAGE="$(df / --output=pcent -x tmpfs -x devtmpfs | tr -dc '0-9')"
+}
+
+function gather_metrics_threshold {
+
+    # strip '%' of thresholds in serverbot.conf
+    THRESHOLD_LOAD_NUMBER="$(echo "${THRESHOLD_LOAD}" | tr -d '%')"
+    THRESHOLD_MEMORY_NUMBER="$(echo "${THRESHOLD_MEMORY}" | tr -d '%')"
+    THRESHOLD_DISK_NUMBER="$(echo "${THRESHOLD_DISK}" | tr -d '%')"
+}
+
+function gather_updates {
+
+    # check os
+    requirement_os
+
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
+        # list with available updates to variable AVAILABLE_UPDATES
+        AVAILABLE_UPDATES="$(yum check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
+        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
+        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
+    fi
+
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
+        # list with available updates to variable AVAILABLE_UPDATES
+        AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
+        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
+        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
+    fi
+
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+        # update repository
+        apt-get -qq update
+        # list with available updates to variable AVAILABLE_UPDATES
+        AVAILABLE_UPDATES="$(aptitude -F "%p" search '~U')"
+        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
+        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
     fi
 }
 
@@ -319,10 +564,10 @@ function serverbot_upgrade {
 
 function serverbot_self_upgrade {
 
-    # During normal installation, only one pair of token and chat ID will be
-    # asked and used. If you want to use multiple Telegram Bots for the
+    # during normal installation, only one pair of token and chat ID will be
+    # asked and used. if you want to use multiple Telegram Bots for the
     # different roles, add the tokens and chat IDs in the below variables.
-    # Please note that you have to set them *all* (even the ones you don't use)
+    # please note that you have to set them *all* (even the ones you don't use)
     # for them to work.
 
     # this function is used both for installing and updating serverbot
@@ -339,7 +584,7 @@ function serverbot_self_upgrade {
     if [ -f /etc/serverbot/serverbot.conf ]; then
         source /etc/serverbot/serverbot.conf
 
-        # Notify user that all configuration steps will be skipped
+        # notify user that all configuration steps will be skipped
         echo "[i] Info: existing configuration found, skipping creation..."
         echo "[i] Info: skipping gathering tokens..."
         echo "[i] Info: skipping gathering chat IDs..."
@@ -354,26 +599,26 @@ function serverbot_self_upgrade {
         update_os
 
         # install dependencies on CentOS 7
-        if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
             yum -y -q install wget bc
         fi
 
         # install dependencies on CentOS 8+ and Fedora
-        if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
             dnf -y -q install wget bc
         fi
 
         # install dependencies on Debian and Ubuntu
-        if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
             apt-get -y -qq install aptitude bc curl
         fi
 
@@ -447,207 +692,64 @@ function serverbot_self_upgrade {
 }
 
 #############################################################################
-# REQUIREMENT FUNCTIONS
-#############################################################################
-
-function requirement_root {
-
-    # checking whether the script runs as root
-    if [ "$EUID" -ne 0 ]; then
-        echo
-        echo '[!] Error: this script should run with root privileges.'
-        echo
-        exit 1
-    else
-        echo '[i] Info: script has correct privileges...'
-    fi
-}
-
-function requirement_os {
-
-    # checking whether supported operating system is installed
-    # source /etc/os-release to use variables
-    if [ -f /etc/os-release ]; then
-        source /etc/os-release
-
-        # Put distro name and version in variables
-        OPERATING_SYSTEM="${NAME}"
-        OPERATING_SYSTEM_VERSION="${VERSION_ID}"
-
-        # check all supported combinations of OS and version
-        if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-        [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
-            if [ "$ARGUMENT_UPGRADE" == '1' ]; then
-                echo '[i] Info: operating system is supported...'
-            fi
-        else
-            echo
-            echo '[!] Error: this operating system is not supported.'
-            echo
-            exit 1
-        fi
-    else
-        echo
-        echo '[!] Error: this operating system is not supported.'
-        echo
-        exit 1
-    fi
-}
-
-function requirement_internet {
-
-    # checking internet connection
-    if ping -q -c 1 -W 1 google.com >/dev/null; then
-        echo '[i] Info: is connected to the internet...'
-    else
-        echo
-        echo '[!] Error: access to the internet is required.'
-        echo
-        exit 1
-    fi
-}
-
-#############################################################################
-# GATHER FUNCTIONS
-#############################################################################
-
-function gather_server_information {
-
-    # server information
-    HOSTNAME="$(uname -n)"
-    UPTIME="$(uptime -p)"
-}
-
-function gather_metrics_cpu {
-
-    # cpu and load metrics
-    CORE_AMOUNT="$(grep -c 'cpu cores' /proc/cpuinfo)"
-    MAX_LOAD_SERVER="${CORE_AMOUNT}.00"
-    COMPLETE_LOAD="$(< /proc/loadavg awk '{print $1" "$2" "$3}')"
-    CURRENT_LOAD="$(< /proc/loadavg awk '{print $3}')"
-    CURRENT_LOAD_PERCENTAGE="$(echo "(${CURRENT_LOAD}/${MAX_LOAD_SERVER})*100" | bc -l)"
-    CURRENT_LOAD_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_LOAD_PERCENTAGE}" | tr -d '%'))"
-}
-
-function gather_metrics_memory {
-
-    # check os
-    requirement_os
-
-    # use older format in free when Debian 8 or Ubuntu 14.04 is used
-    if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ]; then
-        TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
-        FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
-        BUFFERS_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
-        CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $7}')"
-        USED_MEMORY="$(echo "(${TOTAL_MEMORY}-${FREE_MEMORY}-${BUFFERS_MEMORY}-${CACHED_MEMORY})" | bc -l)"
-        CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
-        CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
-    fi
-
-    # use newer format in free when CentOS 7+, Debian 9+ or Ubuntu 16.04+ is used
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
-        TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
-        FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
-        BUFFERS_CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
-        USED_MEMORY="$(echo "(${TOTAL_MEMORY}-${FREE_MEMORY}-${BUFFERS_CACHED_MEMORY})" | bc -l)"
-        CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
-        CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
-    fi
-}
-
-function gather_metrics_disk {
-
-    # file system metrics
-    TOTAL_DISK_SIZE="$(df -h / --output=size -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
-    CURRENT_DISK_USAGE="$(df -h / --output=used -x tmpfs -x devtmpfs | sed -n '2 p' | tr -d ' ')"
-    CURRENT_DISK_PERCENTAGE="$(df / --output=pcent -x tmpfs -x devtmpfs | tr -dc '0-9')"
-}
-
-function gather_metrics_threshold {
-
-    # strip '%' of thresholds in serverbot.conf
-    THRESHOLD_LOAD_NUMBER="$(echo "${THRESHOLD_LOAD}" | tr -d '%')"
-    THRESHOLD_MEMORY_NUMBER="$(echo "${THRESHOLD_MEMORY}" | tr -d '%')"
-    THRESHOLD_DISK_NUMBER="$(echo "${THRESHOLD_DISK}" | tr -d '%')"
-}
-
-function gather_updates {
-
-    # check os
-    requirement_os
-
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 7" ]; then
-        # list with available updates to variable AVAILABLE_UPDATES
-        AVAILABLE_UPDATES="$(yum check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
-        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
-        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
-    fi
-
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "CentOS Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 27" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 28" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Fedora 29" ]; then
-        # list with available updates to variable AVAILABLE_UPDATES
-        AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
-        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
-        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
-    fi
-
-    if [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 8" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 9" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Debian GNU/Linux 10" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 14.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 16.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.04" ] || \
-    [ "$OPERATING_SYSTEM $OPERATING_SYSTEM_VERSION" == "Ubuntu 18.10" ]; then
-        # update repository
-        apt-get -qq update
-        # list with available updates to variable AVAILABLE_UPDATES
-        AVAILABLE_UPDATES="$(aptitude -F "%p" search '~U')"
-        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
-        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
-    fi
-}
-
-#############################################################################
 # FEATURE FUNCTIONS
 #############################################################################
 
-function feature_not_yet_implemented {
-    echo "Oops! This function has not been implemented yet!"
+function feature_overview_cli {
+
+    # output server overview to shell
+    echo
+    echo '# SYSTEM INFORMATION #'
+    echo "HOST:         ${HOSTNAME}"
+    echo "OS:           ${OPERATING_SYSTEM}"
+    echo "DISTRO:       ${DISTRO} ${DISTRO_VERSION}"
+    echo "KERNEL:       ${KERNEL_NAME} ${KERNEL_VERSION}"
+    echo "ARCHITECTURE: ${ARCHITECTURE}"
+    echo "UPTIME:       ${UPTIME}"
+    echo
+    echo '# INTERNAL IP:'
+    printf '%s\n'       ${INTERNAL_IP_ADDRESS}
+    echo
+    echo "# EXTERNAL IP:"
+    echo "${EXTERNAL_IP_ADDRESS}"
+    echo
+    echo '# HEALTH INFORMATION #'
+    echo "LOAD:         ${COMPLETE_LOAD}"
+    echo "MEMORY:       ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
+    echo "DISK:         ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
+    echo
+
+    # exit when done
+    exit 0
+}
+
+function feature_overview_telegram {
+
+    # add values to method_telegram variables
+    TELEGRAM_CHAT_ID="${OVERVIEW_CHAT}"
+    TELEGRAM_URL="${OVERVIEW_URL}"
+
+    # create message for telegram
+    TELEGRAM_MESSAGE="$(echo -e "*Host*:              ${HOSTNAME}\\n*OS*:                   ${OPERATING_SYSTEM}\\n*Distro*:            ${DISTRO} ${DISTRO_VERSION}\\n*Kernel*:            ${KERNEL_NAME} ${KERNEL_VERSION}\\n*Architecture*:   ${UPTIME}\\n*Uptime*:            ${UPTIME}\\n\\n*Internal IP*:\\n${EXTERNAL_IP_ADDRESSES}\\n\\n*External IP*:\\n"${EXTERNAL_IP_ADDRESSES}"\\n\\n*Load*:           ${COMPLETE_LOAD}\\n*Memory*:         ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:           ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
+
+    # call method_telegram
+    method_telegram
+
+    # exit when done
     exit 0
 }
 
 function feature_metrics_cli {
 
-    # output server metrics to shell and exit
+    # output server metrics to shell
     echo
     echo "HOST:     ${HOSTNAME}"
     echo "UPTIME:   ${UPTIME}"
     echo "LOAD:     ${COMPLETE_LOAD}"
     echo "MEMORY:   ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
     echo "DISK:     ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
+
+    # exit when done
     exit 0
 }
 
@@ -658,7 +760,7 @@ function feature_metrics_telegram {
     TELEGRAM_URL="${METRICS_URL}"
 
     # create message for telegram
-    TELEGRAM_MESSAGE="$(echo -e "*Host*:        ${HOSTNAME}\\n*UPTIME*:  ${UPTIME}\\n\\n*Load*:         ${COMPLETE_LOAD}\\n*Memory*:  ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:          ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
+    TELEGRAM_MESSAGE="$(echo -e "*Host*:        ${HOSTNAME}\\n*Uptime*:  ${UPTIME}\\n\\n*Load*:         ${COMPLETE_LOAD}\\n*Memory*:  ${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)\\n*Disk*:          ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)")"
 
     # call method_telegram
     method_telegram
@@ -784,23 +886,20 @@ function method_telegram {
 
     # give error when telegram is unavailable
     if [ "${METHOD_TELEGRAM}" == 'disabled' ]; then
-        echo
-        echo '[!] Error: method Telegram is not available without Serverbot configuration file.'
-        echo
-        exit 0
+        error_method_not_available
     fi
 
     # create payload for Telegram
     TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT_ID}&text=${TELEGRAM_MESSAGE}&parse_mode=Markdown&disable_web_page_preview=true"
 
     # sent payload to Telegram API and exit
-    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
+    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" #> /dev/null 2>&1 &
 }
 
 function method_email {
 
     # planned for version 1.1
-    echo '[!] Error: method e-mail is not available yet.'
+    error_not_yet_implemented
 }
 
 #############################################################################
@@ -817,26 +916,43 @@ function serverbot_main {
     # option upgrade
     elif [ "$ARGUMENT_UPGRADE" == '1' ]; then
         serverbot_upgrade
+    # feature overview; method telegram
+    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+        gather_information_server
+        gather_information_network
+        gather_information_distro
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+        feature_overview_cli
+    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+        gather_information_server
+        gather_information_network
+        gather_information_distro
+        gather_metrics_cpu
+        gather_metrics_memory
+        gather_metrics_disk
+        feature_overview_telegram
     # feature metrics; method cli
     elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        gather_server_information
+        gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
         feature_metrics_cli
     # feature metrics; method Telegram
     elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        gather_server_information
+        gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
         feature_metrics_telegram
     # feature metrics; method email
     elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature alert; method cli
     elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        gather_server_information
+        gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
@@ -844,7 +960,7 @@ function serverbot_main {
         feature_alert_cli
     # feature alert; method telegram
     elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        gather_server_information
+        gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
@@ -852,80 +968,52 @@ function serverbot_main {
         feature_alert_telegram
     # feature alert; method email
     elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature updates; method cli
     elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
         gather_updates
         feature_updates_cli
     # feature updates; method telegram
     elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        gather_server_information
+        gather_information_server
         gather_updates
         feature_updates_telegram
     # feature updates; method email
     elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature login; method cli
     elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature login; method telegram
     elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature login; method email
     elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature outage; method cli
     elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature outage; method telegram
     elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature outage; method email
     elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature backup; method none
     elif [ "$ARGUMENT_BACKUP" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature backup; method cli
     elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature backup; method telegram
     elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # feature backup; method email
     elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
-    # feature sql; method none
-    elif [ "$ARGUMENT_FILES" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method cli
-    elif [ "$ARGUMENT_FILES" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method telegram
-    elif [ "$ARGUMENT_FILES" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method email
-    elif [ "$ARGUMENT_FILES" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
-    # feature sql; method none
-    elif [ "$ARGUMENT_SQL" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method cli
-    elif [ "$ARGUMENT_SQL" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method telegram
-    elif [ "$ARGUMENT_SQL" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        feature_not_yet_implemented
-    # feature backup; method email
-    elif [ "$ARGUMENT_SQL" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        feature_not_yet_implemented
+        error_not_yet_implemented
     # undefined argument given
     elif [ "$ARGUMENT_NONE" == '1' ]; then
-        echo
-        echo "serverbot: invalid option -- '${1}'"
-        echo "Try 'serverbot --help' for more information."
-        echo
-        exit 1
+        error_invalid_option
     fi
 }
 
