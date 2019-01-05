@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.6.0-ALPHA (04-01-2019)
+# Version 0.7.0-ALPHA (05-01-2019)
 #############################################################################
 
 #############################################################################
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.6.0'
+VERSION='0.7.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -107,7 +107,7 @@ while test -n "$1"; do
             echo
             echo "Options:"
             echo " --cron               Effectuate cron changes from serverbot config"
-            echo " --config             Generates serverbot.conf to unlock all features"
+            echo " --install            Installs serverbot on the system and unlocks all features"
             echo " --upgrade            Upgrade serverbot to the latest stable version"
             echo " --help               Display this help and exit"
             echo " --version            Display version information and exit"
@@ -168,8 +168,8 @@ while test -n "$1"; do
             shift
             ;;
 
-        --config)
-            ARGUMENT_CONFIG='1'
+        --install)
+            ARGUMENT_INSTALL='1'
             shift
             ;;
 
@@ -223,6 +223,12 @@ function update_os {
     fi
 }
 
+function check_version {
+
+    # make comparison of serverbot versions possible
+    echo "$@" | gawk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }';
+}
+
 #############################################################################
 # REQUIREMENT FUNCTIONS
 #############################################################################
@@ -257,6 +263,7 @@ function requirement_os {
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
@@ -385,7 +392,7 @@ function gather_metrics_memory {
     # check os
     requirement_os
 
-    # use older format in free when Debian 8 or Ubuntu 14.04 is used
+    # use old format of free when Debian 8 or Ubuntu 14.04 is used
     if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
     [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
@@ -403,6 +410,7 @@ function gather_metrics_memory {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
@@ -448,7 +456,8 @@ function gather_updates {
     if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
@@ -541,33 +550,35 @@ function serverbot_cron {
 
 function serverbot_upgrade {
 
-    # create temp file for update
-    TMP_INSTALL="$(mktemp)"
+    # source most recent serverbot version
+    source <(curl -s https://raw.githubusercontent.com/onnozel/serverbot/master/version.txt)
 
-    # get most recent install script
-    wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+    # check if most recent serverbot is newer
+    if [ "$(check_version "$VERSION_SERVERBOT")" -gt "$(check_version "$VERSION")" ]; then
+        # create temp file for update
+        TMP_INSTALL="$(mktemp)"
 
-    # set permissions on install script
-    chmod 700 "${TMP_INSTALL}"
+        # get most recent install script
+        wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
 
-    # execute install script
-    /bin/bash "${TMP_INSTALL}" --self-upgrade
+        # set permissions on install script
+        chmod 700 "${TMP_INSTALL}"
 
-    # remove temporary file
-    rm "${TMP_INSTALL}"
+        # execute install script
+        /bin/bash "${TMP_INSTALL}" --self-upgrade
+
+        # remove temporary file
+        rm "${TMP_INSTALL}"
+    else
+        exit 0
+    fi
 }
 
 function serverbot_self_upgrade {
 
-    # during normal installation, only one pair of token and chat ID will be
-    # asked and used. if you want to use multiple Telegram Bots for the
-    # different roles, add the tokens and chat IDs in the below variables.
-    # please note that you have to set them *all* (even the ones you don't use)
-    # for them to work.
-
     # this function is used both for installing and updating serverbot
-    # if serverbot.conf exists, serverbot will be updates. if serverbot.conf doesn't
-    # exist, serverbot will be installed.
+    # if serverbot.conf exists, serverbot will be updated
+    # if serverbot.conf doesn't exist, serverbot will be installed
 
     # check whether requirements are met
     echo
@@ -575,7 +586,7 @@ function serverbot_self_upgrade {
     requirement_os
     requirement_internet
 
-    # gather configuration settings if serverbot.conf is absent, otherwise use serverbot.conf
+    # gather configuration settings from user if serverbot.conf is absent, otherwise use serverbot.conf
     if [ -f /etc/serverbot/serverbot.conf ]; then
         source /etc/serverbot/serverbot.conf
 
@@ -602,7 +613,8 @@ function serverbot_self_upgrade {
         if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ]; then
             dnf -y -q install wget bc
         fi
 
@@ -630,18 +642,6 @@ function serverbot_self_upgrade {
         if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
             read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
             read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
-
-            # Use provided token and chat ID in corresponding variables
-            METRICS_TOKEN="${TELEGRAM_TOKEN}"
-            METRICS_CHAT="${TELEGRAM_CHAT_ID}"
-            ALERT_TOKEN="${TELEGRAM_TOKEN}"
-            ALERT_CHAT="${TELEGRAM_CHAT_ID}"
-            UPDATES_TOKEN="${TELEGRAM_TOKEN}"
-            UPDATES_CHAT="${TELEGRAM_CHAT_ID}"
-            LOGIN_TOKEN="${TELEGRAM_TOKEN}"
-            LOGIN_CHAT="${TELEGRAM_CHAT_ID}"
-            OUTAGE_TOKEN="${TELEGRAM_TOKEN}"
-            OUTAGE_CHAT="${TELEGRAM_CHAT_ID}"
         fi
 
         # add serverbot configuration file to /etc/serverbot
@@ -650,30 +650,16 @@ function serverbot_self_upgrade {
         wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
         chmod 640 /etc/serverbot/serverbot.conf
 
-        # add operating system information
-        echo "[+] Adding system information to configuration file..."
-        sed -i s%'operating_system_here'%"${OPERATING_SYSTEM}"%g /etc/serverbot/serverbot.conf
-        sed -i s%'operating_system_version_here'%"${OPERATING_SYSTEM_VERSION}"%g /etc/serverbot/serverbot.conf
+        # use current major version in /etc/serverbot/serverbot.conf
+        echo "[+] Adding default config parameters to configuration file..."
+        sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
 
-        # add Telegram access tokens and chat IDs
+
+        # add Telegram access token and chat ID
         if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
             echo "[+] Adding access token and chat ID to bots..."
-            sed -i s%'auto_upgrade_here'%"${AUTO_UPGRADE}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'metrics_activate_here'%"${METRICS_ENABLED}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'metrics_token_here'%"${METRICS_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'metrics_id_here'%"${METRICS_CHAT}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'alert_activate_here'%"${ALERT_ENABLED}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'alert_token_here'%"${ALERT_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'alert_id_here'%"${ALERT_CHAT}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'updates_activate_here'%"${UPDATES_ENABLED}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'updates_token_here'%"${UPDATES_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'updates_id_here'%"${UPDATES_CHAT}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'login_activate_here'%"${LOGIN_ENABLED}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'login_token_here'%"${LOGIN_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'login_id_here'%"${LOGIN_CHAT}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'outage_activate_here'%"${OUTAGE_ENABLED}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'outage_token_here'%"${OUTAGE_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'outage_id_here'%"${OUTAGE_CHAT}"%g /etc/serverbot/serverbot.conf
+            sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
+            sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
         fi
     fi
 
@@ -683,7 +669,14 @@ function serverbot_self_upgrade {
     chmod 755 /usr/local/bin/serverbot
 
     # creating or updating cronjobs
-    /bin/bash /usr/local/bin/serverbot --config
+    /bin/bash /usr/local/bin/serverbot --cron
+
+    # some information for the user
+    echo
+    echo "Serverbot has now been installed on the system."
+    echo "Configure Serverbot by editting /etc/serverbot/serverbot.conf."
+    echo "Use 'serverbot --help' to see a list of commands."
+    echo
 }
 
 #############################################################################
@@ -909,6 +902,8 @@ function serverbot_main {
     if [ "$ARGUMENT_CRON" == '1' ]; then
         serverbot_cron
     # option upgrade
+    elif [ "$ARGUMENT_INSTALL" == '1' ]; then
+        serverbot_upgrade
     elif [ "$ARGUMENT_UPGRADE" == '1' ]; then
         serverbot_upgrade
     # feature overview; method telegram
@@ -928,6 +923,8 @@ function serverbot_main {
         gather_metrics_memory
         gather_metrics_disk
         feature_overview_telegram
+    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+        error_not_yet_implemented
     # feature metrics; method cli
     elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
         gather_information_server
