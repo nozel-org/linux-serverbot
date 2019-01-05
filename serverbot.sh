@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.7.0-ALPHA (05-01-2019)
+# Version 0.8.0-ALPHA (05-01-2019)
 #############################################################################
 
 #############################################################################
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.7.0'
+VERSION='0.8.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -238,11 +238,13 @@ function requirement_root {
     # checking whether the script runs as root
     if [ "$EUID" -ne 0 ]; then
         echo
-        echo '[!] Error: this script should run with root privileges.'
+        echo '[!] Error: this feature requires root privileges.'
         echo
         exit 1
     else
-        echo '[i] Info: script has correct privileges...'
+        if [ "$ARGUMENT_UPGRADE" == '1' ]; then
+            echo '[i] Info: has correct privileges...'
+        fi
     fi
 }
 
@@ -538,7 +540,7 @@ function serverbot_cron {
     # update backup cronjob if enabled
     elif [ "$BACKUP_ENABLED" == 'yes' ]; then
         echo "[+] Updating Backup cronjob"
-        echo -e "# This cronjob activates Backup on the the chosen schedule\n\n${BACKUP_CRON} root /usr/local/bin/serverbot --backup" > /etc/cron.d/serverbot_backup
+        echo -e "# This cronjob activates Backup on the the chosen schedule\n\n0 ${BACKUP_CRON} * * * root /usr/local/bin/serverbot --backup" > /etc/cron.d/serverbot_backup
     fi
 
     # restart cron
@@ -645,8 +647,12 @@ function serverbot_self_upgrade {
         fi
 
         # add serverbot configuration file to /etc/serverbot
-        echo "[+] Adding configuration file to system..."
+        echo "[+] Adding folders to system..."
         mkdir -m 755 /etc/serverbot
+        mkdir -m 770 /var/lib/serverbot
+        mkdir -m 770 /var/lib/serverbot/files
+        mkdir -m 770 /var/lib/serverbot/sql
+        echo "[+] Adding configuration file to system..."
         wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
         chmod 640 /etc/serverbot/serverbot.conf
 
@@ -713,10 +719,6 @@ function feature_overview_cli {
 
 function feature_overview_telegram {
 
-    # add values to method_telegram variables
-    TELEGRAM_CHAT_ID="${OVERVIEW_CHAT}"
-    TELEGRAM_URL="${OVERVIEW_URL}"
-
     # create message for telegram
     TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:                  <code>${HOSTNAME}</code>\\n<b>OS</b>:                      <code>${OPERATING_SYSTEM}</code>\\n<b>Distro</b>:               <code>${DISTRO} ${DISTRO_VERSION}</code>\\n<b>Kernel</b>:              <code>${KERNEL_NAME} ${KERNEL_VERSION}</code>\\n<b>Architecture</b>:  <code>${ARCHITECTURE}</code>\\n<b>Uptime</b>:             <code>${UPTIME}</code>\\n\\n<b>Internal IP</b>:\\n<code>${INTERNAL_IP_ADDRESS}</code>\\n\\n<b>External IP</b>:\\n<code>${EXTERNAL_IP_ADDRESS}</code>\\n\\n<b>Load</b>:                  <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:           <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:                   <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
 
@@ -742,10 +744,6 @@ function feature_metrics_cli {
 }
 
 function feature_metrics_telegram {
-
-    # add values to method_telegram variables
-    TELEGRAM_CHAT_ID="${METRICS_CHAT}"
-    TELEGRAM_URL="${METRICS_URL}"
 
     # create message for telegram
     TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:        <code>${HOSTNAME}</code>\\n<b>Uptime</b>:  <code>${UPTIME}</code>\\n\\n<b>Load</b>:         <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:  <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:          <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
@@ -785,10 +783,6 @@ function feature_alert_cli {
 }
 
 function feature_alert_telegram {
-
-    # add values to method_telegram variables
-    TELEGRAM_CHAT_ID="${ALERT_CHAT}"
-    TELEGRAM_URL="${ALERT_URL}"
 
     # check whether the current server load exceeds the threshold and alert if true
     if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
@@ -860,6 +854,90 @@ function feature_updates_telegram {
 
         # call method_telegram
         method_telegram
+    fi
+
+    # exit when done
+    exit 0
+}
+
+function feature_backup {
+
+    # this feature function differs from most other feature functions because
+    # the methods (e.g. Telegram or CLI) are incorporated here
+
+    # set default file permission
+    umask 007
+
+    # backup files when enabled
+    if [ "${BACKUP_FILES}" == 'yes' ]; then
+        if [ "${RETENTION_DAILY}" -gt '0' ]; then
+        BACKUP_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_DAILY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_WEEKLY}" -gt '0' ] && [ "$(date +'%u')" -eq "${BACKUP_WEEK_DAY}" ]; then
+        BACKUP_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_MONTHLY}" -gt '0' ] && [ "$(date +'%d')" -eq "${BACKUP_MONTH_DAY}" ]; then
+        BACKUP_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_YEARLY}" -gt '0' ] && [ "$(date +'%j')" -eq "${BACKUP_YEAR_DAY}" ]; then
+        BACKUP_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        fi
+
+        # set backup ownership
+        chown root:root /var/lib/serverbot/files/*
+
+        # touch files to prevent find from giving errors
+        touch /var/lib/serverbot/files/daily-touch
+        touch /var/lib/serverbot/files/weekly-touch
+        touch /var/lib/serverbot/files/monthly-touch
+        touch /var/lib/serverbot/files/yearly-touch
+
+        # delete older backups
+        find /var/lib/serverbot/files/daily* -mtime +"${RETENTION_DAILY}" -type f -delete
+        find /var/lib/serverbot/files/weekly* -mtime +"${RETENTION_WEEKLY}" -type f -delete
+        find /var/lib/serverbot/files/monthly* -mtime +"${RETENTION_MONTHLY}" -type f -delete
+        find /var/lib/serverbot/files/year* -mtime +"${RETENTION_YEARLY}" -type f -delete
+
+        # report backup to Telegram if configured
+        if [ "${BACKUP_TELEGRAM}" == 'yes' ]; then
+            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_DAILY} ]; then
+                BACKUP_DAILY_MESSAGE="\\n- ${BACKUP_NAME_DAILY}"
+            fi
+
+            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_WEEKLY} ]; then
+                BACKUP_WEEKLY_MESSAGE="\\n- ${BACKUP_NAME_WEEKLY}"
+            fi
+
+            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} ]; then
+                BACKUP_MONTHLY_MESSAGE="\\n- ${BACKUP_NAME_MONTHLY}"
+            fi
+
+            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_YEARLY} ]; then
+                BACKUP_YEARLY_MESSAGE="\\n- ${BACKUP_NAME_YEARLY}"
+            fi
+
+            # create message for Telegram
+            TELEGRAM_MESSAGE="$(echo -e "The following file backups have been created on <b>${HOSTNAME}</b>:\\n<code>${BACKUP_DAILY_MESSAGE}${BACKUP_WEEKLY_MESSAGE}${BACKUP_MONTHLY_MESSAGE}${BACKUP_YEARLY_MESSAGE}</code>")"
+
+            # call method_telegram
+            method_telegram
+        fi
+
+        # report backup to email if configured
+        if [ "${BACKUP_EMAIL}" == 'yes' ]; then
+            error_method_not_available
+        fi
+    fi
+
+    if [ "${BACKUP_SQL}" == 'yes' ]; then
+        error_not_yet_implemented
     fi
 
     # exit when done
@@ -993,16 +1071,18 @@ function serverbot_main {
         error_not_yet_implemented
     # feature backup; method none
     elif [ "$ARGUMENT_BACKUP" == '1' ]; then
-        error_not_yet_implemented
+        requirement_root
+        gather_information_server
+        feature_backup
     # feature backup; method cli
-    elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
-        error_not_yet_implemented
+    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    #   error_not_yet_implemented
     # feature backup; method telegram
-    elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
-        error_not_yet_implemented
+    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    #    error_not_yet_implemented
     # feature backup; method email
-    elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
-        error_not_yet_implemented
+    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    #    error_not_yet_implemented
     # undefined argument given
     elif [ "$ARGUMENT_NONE" == '1' ]; then
         error_invalid_option
