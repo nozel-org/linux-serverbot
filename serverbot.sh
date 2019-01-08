@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.8.0-ALPHA (05-01-2019)
+# Version 0.9.0-ALPHA (08-01-2019)
 #############################################################################
 
 #############################################################################
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.8.0'
+VERSION='0.9.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -225,7 +225,7 @@ function update_os {
 
 function check_version {
 
-    # make comparison of serverbot versions possible
+    # make comparison of serverbot versions
     echo "$@" | gawk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }';
 }
 
@@ -871,23 +871,23 @@ function feature_backup {
     # backup files when enabled
     if [ "${BACKUP_FILES}" == 'yes' ]; then
         if [ "${RETENTION_DAILY}" -gt '0' ]; then
-        BACKUP_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_DAILY} "${BACKUP_FILES_PATH}"
+        FILES_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_DAILY} "${BACKUP_FILES_PATH}"
         fi
 
         if [ "${RETENTION_WEEKLY}" -gt '0' ] && [ "$(date +'%u')" -eq "${BACKUP_WEEK_DAY}" ]; then
-        BACKUP_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
+        FILES_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
         fi
 
         if [ "${RETENTION_MONTHLY}" -gt '0' ] && [ "$(date +'%d')" -eq "${BACKUP_MONTH_DAY}" ]; then
-        BACKUP_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        FILES_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
         fi
 
         if [ "${RETENTION_YEARLY}" -gt '0' ] && [ "$(date +'%j')" -eq "${BACKUP_YEAR_DAY}" ]; then
-        BACKUP_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        FILES_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
         fi
 
         # set backup ownership
@@ -904,44 +904,72 @@ function feature_backup {
         find /var/lib/serverbot/files/weekly* -mtime +"${RETENTION_WEEKLY}" -type f -delete
         find /var/lib/serverbot/files/monthly* -mtime +"${RETENTION_MONTHLY}" -type f -delete
         find /var/lib/serverbot/files/year* -mtime +"${RETENTION_YEARLY}" -type f -delete
-
-        # report backup to Telegram if configured
-        if [ "${BACKUP_TELEGRAM}" == 'yes' ]; then
-            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_DAILY} ]; then
-                BACKUP_DAILY_MESSAGE="\\n- ${BACKUP_NAME_DAILY}"
-            fi
-
-            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_WEEKLY} ]; then
-                BACKUP_WEEKLY_MESSAGE="\\n- ${BACKUP_NAME_WEEKLY}"
-            fi
-
-            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_MONTHLY} ]; then
-                BACKUP_MONTHLY_MESSAGE="\\n- ${BACKUP_NAME_MONTHLY}"
-            fi
-
-            if [ -f /var/lib/serverbot/files/${BACKUP_NAME_YEARLY} ]; then
-                BACKUP_YEARLY_MESSAGE="\\n- ${BACKUP_NAME_YEARLY}"
-            fi
-
-            # create message for Telegram
-            TELEGRAM_MESSAGE="$(echo -e "The following file backups have been created on <b>${HOSTNAME}</b>:\\n<code>${BACKUP_DAILY_MESSAGE}${BACKUP_WEEKLY_MESSAGE}${BACKUP_MONTHLY_MESSAGE}${BACKUP_YEARLY_MESSAGE}</code>")"
-
-            # call method_telegram
-            method_telegram
-        fi
-
-        # report backup to email if configured
-        if [ "${BACKUP_EMAIL}" == 'yes' ]; then
-            error_method_not_available
-        fi
     fi
 
+    # backup SQL when enabled
     if [ "${BACKUP_SQL}" == 'yes' ]; then
-        error_not_yet_implemented
+        if [ "${RETENTION_DAILY}" -gt '0' ]; then
+        SQL_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_DAILY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_WEEKLY}" -gt '0' ] && [ "$(date +'%u')" -eq "${BACKUP_WEEK_DAY}" ]; then
+        SQL_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_MONTHLY}" -gt '0' ] && [ "$(date +'%d')" -eq "${BACKUP_MONTH_DAY}" ]; then
+        SQL_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        fi
+
+        if [ "${RETENTION_YEARLY}" -gt '0' ] && [ "$(date +'%j')" -eq "${BACKUP_YEAR_DAY}" ]; then
+        SQL_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
+        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
+        fi
     fi
 
-    # exit when done
-    exit 0
+    # report backup to Telegram if configured
+    if [ "${BACKUP_TELEGRAM}" == 'yes' ]; then
+        if [ -f /var/lib/serverbot/files/${FILES_NAME_DAILY} ]; then
+            FILES_DAILY_MESSAGE="\\n- ${FILES_NAME_DAILY}"
+        fi
+        if [ -f /var/lib/serverbot/files/${FILES_NAME_WEEKLY} ]; then
+            FILES_WEEKLY_MESSAGE="\\n- ${FILES_NAME_WEEKLY}"
+        fi
+        if [ -f /var/lib/serverbot/files/${FILES_NAME_MONTHLY} ]; then
+            FILES_MONTHLY_MESSAGE="\\n- ${FILES_NAME_MONTHLY}"
+        fi
+        if [ -f /var/lib/serverbot/files/${FILES_NAME_YEARLY} ]; then
+            FILES_YEARLY_MESSAGE="\\n- ${FILES_NAME_YEARLY}"
+        fi
+        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
+            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
+        fi
+        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
+            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
+        fi
+        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
+            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
+        fi
+        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
+            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
+        fi
+
+        # create message for Telegram
+        TELEGRAM_MESSAGE="$(echo -e "The following file backups have been created on <b>${HOSTNAME}</b>:\\n<code>${FILES_DAILY_MESSAGE}${FILES_WEEKLY_MESSAGE}${FILES_MONTHLY_MESSAGE}${FILES_YEARLY_MESSAGE}${SQL_DAILY_MESSAGE}${SQL_WEEKLY_MESSAGE}${SQL_MONTHLY_MESSAGE}${SQL_YEARLY_MESSAGE}</code>")"
+
+        # call method_telegram
+        method_telegram
+
+        # exit when done
+        exit 0
+    fi
+
+    # report backup to email if configured
+    if [ "${BACKUP_EMAIL}" == 'yes' ]; then
+        error_method_not_available
+    fi
 }
 
 #############################################################################
