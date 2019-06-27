@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.9.0-ALPHA (08-01-2019)
+# Version 0.10.0-ALPHA (27-06-2019)
 #############################################################################
 
 #############################################################################
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.9.0'
+VERSION='0.10.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -206,7 +206,9 @@ function update_os {
     if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
     dnf -y -q update
     fi
 
@@ -214,6 +216,7 @@ function update_os {
     if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
@@ -242,8 +245,8 @@ function requirement_root {
         echo
         exit 1
     else
-        if [ "$ARGUMENT_UPGRADE" == '1' ]; then
-            echo '[i] Info: has correct privileges...'
+        if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
+            echo '[i] Info: script has correct privileges...'
         fi
     fi
 }
@@ -266,14 +269,16 @@ function requirement_os {
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
-            if [ "$ARGUMENT_UPGRADE" == '1' ]; then
+            if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
                 echo '[i] Info: operating system is supported...'
             fi
         else
@@ -324,7 +329,9 @@ function error_invalid_option {
 
 function error_not_yet_implemented {
 
+    echo
     echo "[!] Error: this feature has not been implemented yet."
+    echo
     exit 1
 }
 
@@ -413,8 +420,10 @@ function gather_metrics_memory {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
@@ -459,7 +468,8 @@ function gather_updates {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
@@ -469,6 +479,7 @@ function gather_updates {
     if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
@@ -492,42 +503,42 @@ function serverbot_cron {
     echo "*** UPDATING CRONJOBS ***"
 
     # update cronjob for serverbot upgrade if enabled
-    if [ "$SERVERBOT_UPGRADE" == 'yes' ]; then
+    if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
         echo "[+] Updating cronjob for automatic upgrade"
         echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --upgrade" > /etc/cron.d/serverbot_auto_upgrade
     # update overview cronjob if enabled
-    elif [ "$OVERVIEW_ENABLED" == 'yes' ] && [ "$METRICS_TELEGRAM" == 'yes' ]; then
+    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
         echo "[+] Updating Overview on Telegram cronjob"
         echo -e "# This cronjob activates Overview on Telegram on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
-    elif [ "$OVERVIEW_ENABLED" == 'yes' ] && [ "$METRICS_EMAIL" == 'yes' ]; then
+    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
         echo "[+] Updating Overview on email cronjob"
         echo -e "# This cronjob activates Overview on email on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
     # update metrics cronjob if enabled
-    elif [ "$METRICS_ENABLED" == 'yes' ] && [ "$METRICS_TELEGRAM" == 'yes' ]; then
+    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
         echo "[+] Updating Metrics on Telegram cronjob"
         echo -e "# This cronjob activates Metrics on Telegram on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
-    elif [ "$METRICS_ENABLED" == 'yes' ] && [ "$METRICS_EMAIL" == 'yes' ]; then
+    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
         echo "[+] Updating Metrics on email cronjob"
         echo -e "# This cronjob activates Metrics on email on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
     # update alert cronjob if enabled
-    elif [ "$ALERT_ENABLED" == 'yes' ] && [ "$ALERT_TELEGRAM" == 'yes' ]; then
+    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_TELEGRAM}" == 'yes' ]; then
         echo "[+] Updating Alert on Telegram cronjob"
         echo -e "# This cronjob activates Alert on Telegram on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
-    elif [ "$ALERT_ENABLED" == 'yes' ] && [ "$ALERT_EMAIL" == 'yes' ]; then
+    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_EMAIL}" == 'yes' ]; then
         echo "[+] Updating Alert on email cronjob"
         echo -e "# This cronjob activates Alert on email on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
     # update updates cronjob if enabled
-    elif [ "$UPDATES_ENABLED" == 'yes' ] && [ "$UPDATES_TELEGRAM" == 'yes' ]; then
+    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
         echo "[+] Updating Updates on Telegram cronjob"
         echo -e "# This cronjob activates Updates on Telegram on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
-    elif [ "$UPDATES_ENABLED" == 'yes' ] && [ "$UPDATES_EMAIL" == 'yes' ]; then
+    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_EMAIL}" == 'yes' ]; then
         echo "[+] Updating Updates on email cronjob"
         echo -e "# This cronjob activates Updates on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
     # update login cronjob if enabled
-    elif [ "$LOGIN_ENABLED" == 'yes' ] && [ "$LOGIN_TELEGRAM" == 'yes' ]; then
+    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
         echo "[+] Updating Login on Telegram cronjob"
         echo -e "# This cronjob activates Login on Telegram on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
-    elif [ "$LOGIN_ENABLED" == 'yes' ] && [ "$LOGIN_EMAIL" == 'yes' ]; then
+    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_EMAIL}" == 'yes' ]; then
         echo "[+] Updating Login on email cronjob"
         echo -e "# This cronjob activates Login on email on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
     # update outage cronjob if enabled
@@ -538,7 +549,7 @@ function serverbot_cron {
     #    echo "[+] Updating Outage on email cronjob"
     #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
     # update backup cronjob if enabled
-    elif [ "$BACKUP_ENABLED" == 'yes' ]; then
+    elif [ "${BACKUP_ENABLED}" == 'yes' ]; then
         echo "[+] Updating Backup cronjob"
         echo -e "# This cronjob activates Backup on the the chosen schedule\n\n0 ${BACKUP_CRON} * * * root /usr/local/bin/serverbot --backup" > /etc/cron.d/serverbot_backup
     fi
@@ -556,7 +567,7 @@ function serverbot_upgrade {
     source <(curl -s https://raw.githubusercontent.com/onnozel/serverbot/master/version.txt)
 
     # check if most recent serverbot is newer
-    if [ "$(check_version "$VERSION_SERVERBOT")" -gt "$(check_version "$VERSION")" ]; then
+    if [ "$(check_version "${VERSION_SERVERBOT}")" -gt "$(check_version "${VERSION}")" ]; then
         # create temp file for update
         TMP_INSTALL="$(mktemp)"
 
@@ -616,7 +627,8 @@ function serverbot_self_upgrade {
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ]; then
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
             dnf -y -q install wget bc
         fi
 
@@ -624,6 +636,7 @@ function serverbot_self_upgrade {
         if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
@@ -760,19 +773,19 @@ function feature_alert_cli {
     # check whether the current server load exceeds the threshold and alert if true
     # and output server alert status to shell
     echo
-    if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
+    if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
     else
         echo -e "[i] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_LOAD}."
     fi
 
-    if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
+    if [ "${CURRENT_MEMORY_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_MEMORY_NUMBER}" ]; then
         echo -e "[!] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_MEMORY}."
     else
         echo -e "[i] SERVER MEMORY:\\tA current memory usage of ${CURRENT_MEMORY_PERCENTAGE_ROUNDED}% does not exceed the threshold of ${THRESHOLD_MEMORY}."
     fi
 
-    if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
+    if [ "${CURRENT_DISK_PERCENTAGE}" -ge "${THRESHOLD_DISK_NUMBER}" ]; then
         echo -e "[!] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% exceeds the threshold of ${THRESHOLD_DISK}."
     else
         echo -e "[i] DISK USAGE:\\t\\tA current disk usage of ${CURRENT_DISK_PERCENTAGE}% does not exceed the threshold of ${THRESHOLD_DISK}."
@@ -785,7 +798,7 @@ function feature_alert_cli {
 function feature_alert_telegram {
 
     # check whether the current server load exceeds the threshold and alert if true
-    if [ "$CURRENT_LOAD_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_LOAD_NUMBER" ]; then
+    if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         # create message for Telegram
         TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: SERVER LOAD</b>\\n\\nThe server load (<code>${CURRENT_LOAD_PERCENTAGE_ROUNDED}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_LOAD}</code>\\n\\n<b>Load average:</b>\\n<code>${COMPLETE_LOAD}</code>")"
 
@@ -794,7 +807,7 @@ function feature_alert_telegram {
     fi
 
     # check whether the current server memory usage exceeds the threshold and alert if true
-    if [ "$CURRENT_MEMORY_PERCENTAGE_ROUNDED" -ge "$THRESHOLD_MEMORY_NUMBER" ]; then
+    if [ "${CURRENT_MEMORY_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_MEMORY_NUMBER}" ]; then
         # create message for Telegram
         TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: SERVER MEMORY</b>\\n\\nMemory usage (<code>${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_MEMORY}</code>\\n\\n<b>Memory usage:</b>\\n<code>$(free -m -h)</code>")"
 
@@ -803,7 +816,7 @@ function feature_alert_telegram {
     fi
 
     # check whether the current disk usaged exceeds the threshold and alert if true
-    if [ "$CURRENT_DISK_PERCENTAGE" -ge "$THRESHOLD_DISK_NUMBER" ]; then
+    if [ "${CURRENT_DISK_PERCENTAGE}" -ge "${THRESHOLD_DISK_NUMBER}" ]; then
         # create message for Telegram
         TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>ALERT: FILE SYSTEM</b>\\n\\nDisk usage (<code>${CURRENT_DISK_PERCENTAGE}%</code>) on <b>${HOSTNAME}</b> exceeds the threshold of <code>${THRESHOLD_DISK}</code>\\n\\n<b>Filesystem info:</b>\\n<code>$(df -h)</code>")"
 
@@ -819,7 +832,7 @@ function feature_updates_cli {
 
     echo
     # notify user when there are no updates
-    if [ -z "$AVAILABLE_UPDATES" ]; then
+    if [ -z "${AVAILABLE_UPDATES}" ]; then
         echo
         echo "There are no updates available."
         echo
@@ -839,16 +852,16 @@ function feature_updates_cli {
 function feature_updates_telegram {
 
     # do nothing if there are no updates
-    if [ -z "$AVAILABLE_UPDATES" ]; then
+    if [ -z "${AVAILABLE_UPDATES}" ]; then
         exit 0
     else
         # if update list length is less than 4000 characters, then sent update list
-        if [ "$LENGTH_UPDATES" -lt "4000" ]; then
+        if [ "${LENGTH_UPDATES}" -lt "4000" ]; then
             TELEGRAM_MESSAGE="There are updates available on <b>${HOSTNAME}</b>:\n\n${AVAILABLE_UPDATES}"
         fi
 
         # if update list length is greater than 4000 characters, don't sent update list
-        if [ "$LENGTH_UPDATES" -gt "4000" ]; then
+        if [ "${LENGTH_UPDATES}" -gt "4000" ]; then
             TELEGRAM_MESSAGE="There are updates available on <b>${HOSTNAME}</b>. Unfortunately, the list with updates is too large for Telegram. Please update your server as soon as possible."
         fi
 
@@ -1005,15 +1018,15 @@ function serverbot_main {
     ### SOME WAY OF CHECKING VALIDITY OF INPUT HERE ###
 
     # option cron
-    if [ "$ARGUMENT_CRON" == '1' ]; then
+    if [ "${ARGUMENT_CRON}" == '1' ]; then
         serverbot_cron
     # option upgrade
-    elif [ "$ARGUMENT_INSTALL" == '1' ]; then
+    elif [ "${ARGUMENT_INSTALL}" == '1' ]; then
         serverbot_upgrade
-    elif [ "$ARGUMENT_UPGRADE" == '1' ]; then
+    elif [ "${ARGUMENT_UPGRADE}" == '1' ]; then
         serverbot_upgrade
     # feature overview; method telegram
-    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_information_server
         gather_information_network
         gather_information_distro
@@ -1021,7 +1034,7 @@ function serverbot_main {
         gather_metrics_memory
         gather_metrics_disk
         feature_overview_cli
-    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         gather_information_server
         gather_information_network
         gather_information_distro
@@ -1029,27 +1042,27 @@ function serverbot_main {
         gather_metrics_memory
         gather_metrics_disk
         feature_overview_telegram
-    elif [ "$ARGUMENT_OVERVIEW" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature metrics; method cli
-    elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
         feature_metrics_cli
     # feature metrics; method Telegram
-    elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
         gather_metrics_disk
         feature_metrics_telegram
     # feature metrics; method email
-    elif [ "$ARGUMENT_METRICS" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature alert; method cli
-    elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
@@ -1057,7 +1070,7 @@ function serverbot_main {
         gather_metrics_threshold
         feature_alert_cli
     # feature alert; method telegram
-    elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         gather_information_server
         gather_metrics_cpu
         gather_metrics_memory
@@ -1065,54 +1078,54 @@ function serverbot_main {
         gather_metrics_threshold
         feature_alert_telegram
     # feature alert; method email
-    elif [ "$ARGUMENT_ALERT" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature updates; method cli
-    elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_updates
         feature_updates_cli
     # feature updates; method telegram
-    elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         gather_information_server
         gather_updates
         feature_updates_telegram
     # feature updates; method email
-    elif [ "$ARGUMENT_UPDATES" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature login; method cli
-    elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         error_not_yet_implemented
     # feature login; method telegram
-    elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         error_not_yet_implemented
     # feature login; method email
-    elif [ "$ARGUMENT_LOGIN" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature outage; method cli
-    elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         error_not_yet_implemented
     # feature outage; method telegram
-    elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
         error_not_yet_implemented
     # feature outage; method email
-    elif [ "$ARGUMENT_OUTAGE" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     # feature backup; method none
-    elif [ "$ARGUMENT_BACKUP" == '1' ]; then
+    elif [ "${ARGUMENT_BACKUP}" == '1' ]; then
         requirement_root
         gather_information_server
         feature_backup
     # feature backup; method cli
-    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_CLI" == '1' ]; then
+    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
     #   error_not_yet_implemented
     # feature backup; method telegram
-    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_TELEGRAM" == '1' ]; then
+    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
     #    error_not_yet_implemented
     # feature backup; method email
-    #elif [ "$ARGUMENT_BACKUP" == '1' ] && [ "$ARGUMENT_EMAIL" == '1' ]; then
+    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
     #    error_not_yet_implemented
     # undefined argument given
-    elif [ "$ARGUMENT_NONE" == '1' ]; then
+    elif [ "${ARGUMENT_NONE}" == '1' ]; then
         error_invalid_option
     fi
 }
