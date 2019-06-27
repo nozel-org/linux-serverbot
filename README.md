@@ -24,21 +24,28 @@ Some of the features use linux distribution specific dependencies or components,
 | Distribution | Overview | Metrics | Alert | Updates | Backup |
 | ------------ | -------- | ------- | ----- | ------- | ------ |
 | CentOS Linux 7 | | | | | |
-| CentOS Linux 8 | | | | | |
+| CentOS Linux 8 | n/a | n/a | n/a | n/a | n/a |
 | Fedora 27 | | | | | |
 | Fedora 28 | | | | | |
 | Fedora 29 | | | | | |
 | Fedora 30 | | | | | |
-| Fedora 31 | | | | | |
-| Debian GNU/Linux 8 Jessie | | | | | |
-| Debian GNU/Linux 9 Stretch | | | | | |
-| Debian GNU/Linux 10 Buster | | | | | |
-| Ubuntu 14.04 LTS | | | | | |
-| Ubuntu 16.04 LTS | | | | | |
-| Ubuntu 18.04 LTS | | | | | |
-| Ubuntu 18.10 | | | | | |
-| Ubuntu 19.04 | | | | | |
-| Ubuntu 19.10 LTS | | | | | |
+| Fedora 31 | n/a | n/a | n/a | n/a | n/a |
+| Debian GNU/Linux 8 (Jessie) | | | | | |
+| Debian GNU/Linux 9 (Stretch) | | | | | |
+| Debian GNU/Linux 10 (Buster) | | | | | |
+| Debian GNU/Linux 11 (Bullseye) | n/a | n/a | n/a | n/a | n/a |
+| Ubuntu 14.04 LTS (Trusty Tahr) | | | | | |
+| Ubuntu 14.10 (Utopic Unicorn) | | | | | |
+| Ubuntu 15.04 (Vivid Vervet) | | | | | |
+| Ubuntu 15.10 (Wily Werewolf) | | | | | |
+| Ubuntu 16.04 LTS (Xenial Xerus) | | | | | |
+| Ubuntu 16.10 (Yakkety Yak) | | | | | |
+| Ubuntu 17.04 (Zesty Zapus) | | | | | |
+| Ubuntu 17.10 (Artful Aardvark) | | | | | |
+| Ubuntu 18.04 LTS (Bionic Beaver) | | | | | |
+| Ubuntu 18.10 (Cosmic Cuttlefish) | | | | | |
+| Ubuntu 19.04 (Disco Dingo) | | | | | |
+| Ubuntu 19.10 LTS (Eoan Ermine) | | | | | |
 
 # future
 Ideas and plans for future features are:
