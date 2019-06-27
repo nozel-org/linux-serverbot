@@ -46,6 +46,47 @@ Some of the features use linux distribution specific dependencies or components,
 | Ubuntu 19.04 (Disco Dingo) | | | | | | |
 | Ubuntu 19.10 LTS (Eoan Ermine) | | | | | | |
 
+# examples
+```
+root@server:~# serverbot --overview --cli
+
+# SYSTEM #
+HOST:         server
+OS:           GNU/Linux
+DISTRO:       Debian GNU/Linux 9
+KERNEL:       Linux 4.9.0-9-amd64
+ARCHITECTURE: x86_64
+UPTIME:       up 5 days, 1 hour, 33 minutes
+
+# INTERNAL IP:
+121.100.21.39
+1000:500:0:f816:3eff:feff:fe63:2239
+
+# EXTERNAL IP:
+121.100.21.39
+
+# HEALTH INFORMATION #
+LOAD:         0.00 0.00 0.00
+MEMORY:       51M / 3955M (1%)
+DISK:         1.2G / 40G (4%)
+```
+```
+root@server:~# serverbot --metrics --cli
+
+HOST:     server
+UPTIME:   up 5 days, 1 hour, 31 minutes
+LOAD:     0.00 0.00 0.00
+MEMORY:   51M / 3955M (1%)
+DISK:     1.2G / 40G (4%)
+```
+```
+root@server:~# serverbot --alert --cli
+
+[i] SERVER LOAD:        A current server load of 0% does not exceed the threshold of 1%.
+[!] SERVER MEMORY:      A current memory usage of 1% exceeds the threshold of 1%.
+[!] DISK USAGE:         A current disk usage of 4% exceeds the threshold of 1%.
+```
+
 # future
 Ideas and plans for future features are:
 
