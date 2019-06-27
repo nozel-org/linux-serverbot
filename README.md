@@ -7,7 +7,6 @@ Serverbot is a simple (<100 kilobytes) and easy to use server monitoring tool th
 | Metrics | Outputs server metrics like uptime, load, ram and disk. |
 | Alert | Outputs whether load, ram or disk space exceeds the configured threshold. |
 | Updates | Outputs available system updates. |
-| Backup | Backups files, containers and other stuff automatically. |
 
 Aside from features, there are also different methods that can be used with the featurs. In 1.0, the following methods will be available:
 
@@ -63,5 +62,6 @@ Ideas and plans for future features are:
 * Add support for Alpine Linux.
 * Add support for Fedora 31.
 * Add support for NixOS.
+* Add feature backup which backups files, containers and other stuff automatically.
 
 New ideas are welcome!
