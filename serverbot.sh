@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.10.0-ALPHA (27-06-2019)
+# Version 0.11.0-ALPHA (27-06-2019)
 #############################################################################
 
 #############################################################################
-# Copyright 2016-2019 Nozel/Sebas Veeke. Licenced under a Creative Commons 
+# Copyright 2016-2019 Nozel/Sebas Veeke. Licenced under a Creative Commons
 # Attribution-NonCommercial-ShareAlike 4.0 International License.
 #
 # See https://creativecommons.org/licenses/by-nc-sa/4.0/
@@ -33,7 +33,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.10.0'
+VERSION='0.11.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -561,10 +561,108 @@ function serverbot_cron {
     exit 0
 }
 
+function serverbot_install_check {
+
+    # check wheter serverbot.conf is already installed
+    if [ -f /etc/serverbot/serverbot.conf ]; then
+        while true
+            do
+                read -r -p '[?] serverbot is already installed, would you like to reinstall? (yes/no): ' REINSTALL
+                [ "${REINSTALL}" = "yes" ] || [ "${REINSTALL}" = "no" ] && break
+                echo
+                echo "[!] Error: please type yes or no and press enter to continue."
+                echo
+            done
+
+        if [ "${REINSTALL}" = "no" ]; then
+            exit 0
+        fi
+
+        if [ "${REINSTALL}" = "yes" ]; then
+            echo "[!] Serverbot will be reinstalled now..."
+            serverbot_install
+        fi
+    else
+        serverbot_install
+    fi
+}
+
+function serverbot_install {
+
+    echo "[!] Serverbot will be installed now..."
+
+    # update os
+    echo "[+] Installing dependencies..."
+    update_os
+
+    # install dependencies on CentOS 7
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
+        yum -y -q install wget bc
+    fi
+
+    # install dependencies on CentOS 8+ and Fedora
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+        dnf -y -q install wget bc
+    fi
+
+    # install dependencies on Debian and Ubuntu
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+        apt-get -y -qq install aptitude bc curl gawk
+    fi
+
+    # optionally configure method telegram
+    while true
+        do
+            read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
+            [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
+            echo
+            echo "[!] Error: please type yes or no and press enter to continue."
+            echo
+        done
+
+    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+        read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
+        read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
+    fi
+
+    # add serverbot configuration file to /etc/serverbot
+    echo "[+] Adding folders to system..."
+    mkdir -m 755 /etc/serverbot
+    mkdir -m 770 /var/lib/serverbot
+    mkdir -m 770 /var/lib/serverbot/files
+    mkdir -m 770 /var/lib/serverbot/sql
+    echo "[+] Adding configuration file to system..."
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+    chmod 640 /etc/serverbot/serverbot.conf
+
+    # use current major version in /etc/serverbot/serverbot.conf
+    echo "[+] Adding default config parameters to configuration file..."
+    sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
+
+    # add Telegram access token and chat ID
+    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+        echo "[+] Adding access token and chat ID to bots..."
+        sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
+        sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
+    fi   
+}
+
 function serverbot_upgrade {
 
     # source most recent serverbot version
-    source <(curl -s https://raw.githubusercontent.com/onnozel/serverbot/master/version.txt)
+    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
 
     # check if most recent serverbot is newer
     if [ "$(check_version "${VERSION_SERVERBOT}")" -gt "$(check_version "${VERSION}")" ]; then
@@ -572,7 +670,7 @@ function serverbot_upgrade {
         TMP_INSTALL="$(mktemp)"
 
         # get most recent install script
-        wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
 
         # set permissions on install script
         chmod 700 "${TMP_INSTALL}"
@@ -666,7 +764,7 @@ function serverbot_self_upgrade {
         mkdir -m 770 /var/lib/serverbot/files
         mkdir -m 770 /var/lib/serverbot/sql
         echo "[+] Adding configuration file to system..."
-        wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
         chmod 640 /etc/serverbot/serverbot.conf
 
         # use current major version in /etc/serverbot/serverbot.conf
@@ -684,7 +782,7 @@ function serverbot_self_upgrade {
 
     # install latest version serverbot
     echo "[+] Installing latest version of serverbot..."
-    wget -q https://raw.githubusercontent.com/onnozel/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
     chmod 755 /usr/local/bin/serverbot
 
     # creating or updating cronjobs
@@ -706,7 +804,7 @@ function feature_overview_cli {
 
     # output server overview to shell
     echo
-    echo '# SYSTEM INFORMATION #'
+    echo '# SYSTEM #'
     echo "HOST:         ${HOSTNAME}"
     echo "OS:           ${OPERATING_SYSTEM}"
     echo "DISTRO:       ${DISTRO} ${DISTRO_VERSION}"
@@ -720,7 +818,7 @@ function feature_overview_cli {
     echo "# EXTERNAL IP:"
     echo "${EXTERNAL_IP_ADDRESS}"
     echo
-    echo '# HEALTH INFORMATION #'
+    echo '# HEALTH #'
     echo "LOAD:         ${COMPLETE_LOAD}"
     echo "MEMORY:       ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
     echo "DISK:         ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
@@ -997,7 +1095,7 @@ function method_telegram {
     fi
 
     # create payload for Telegram
-    TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT_ID}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
+    TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
 
     # sent payload to Telegram API and exit
     curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" #> /dev/null 2>&1 &
@@ -1022,9 +1120,11 @@ function serverbot_main {
         serverbot_cron
     # option upgrade
     elif [ "${ARGUMENT_INSTALL}" == '1' ]; then
-        serverbot_upgrade
+        serverbot_install_check
     elif [ "${ARGUMENT_UPGRADE}" == '1' ]; then
         serverbot_upgrade
+    elif [ "${ARGUMENT_SELF_UPGRADE}" == '1' ]; then
+        serverbot_self_upgrade
     # feature overview; method telegram
     elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_information_server
