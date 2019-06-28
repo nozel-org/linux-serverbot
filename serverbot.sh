@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.11.0-ALPHA (27-06-2019)
+# Version 0.0.0-ALPHA (28-06-2019)
 #############################################################################
 
 #############################################################################
@@ -28,12 +28,14 @@
 # - MAIN FUNCTION
 # - CALL MAIN FUNCTION
 
+# add line numbers in index?
+
 #############################################################################
 # VARIABLES
 #############################################################################
 
 # serverbot version
-VERSION='0.11.0'
+VERSION='0.0.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -45,9 +47,6 @@ else
     #FEATURE_UPDATES='enabled'
     #FEATURE_LOGIN='disabled' # work in progress
     #FEATURE_OUTAGE='disabled' # work in progress
-    #FEATURE_BACKUP='enabled'
-    #FEATURE_FILES='enabled'
-    #FEATURE_SQL='enabled'
     METHOD_CLI='enabled'
     METHOD_TELEGRAM='disabled' # won't work without serverbot.conf
     METHOD_EMAIL='disabled' # won't work without serverbot.conf
@@ -59,12 +58,6 @@ else
     THRESHOLD_LOAD='90%'
     THRESHOLD_MEMORY='80%'
     THRESHOLD_DISK='80%'
-
-    # backup retention in number of days.
-    #RETENTION_DAILY='14'
-    #RETENTION_WEEKLY='180'
-    #RETENTION_MONTHLY='180'
-    #RETENTION_YEARLY='0'
 fi
 
 #############################################################################
@@ -77,7 +70,7 @@ while test -n "$1"; do
         # options
         --version)
             echo
-            echo "ServerBot ${VERSION}"
+            echo "serverbot ${VERSION}"
             echo "Copyright (C) 2018 Nozel."
             echo
             echo "License CC Attribution-NonCommercial-ShareAlike 4.0 Int."
@@ -98,12 +91,11 @@ while test -n "$1"; do
             echo " -a, --alert           Show server alert status"
             echo " -u, --updates         Show available server updates"
             #echo " -o, --outage          Check list for outage"
-            echo " -b, --backup          Backup sql and files"
             echo
             echo "Methods:"
             echo " -c, --cli             Output [feature] to command line"
             echo " -t, --telegram        Output [feature] to Telegram bot"
-            echo " -e, --email           Output [feature] to e-mail"
+            #echo " -e, --email           Output [feature] to e-mail"
             echo
             echo "Options:"
             echo " --cron               Effectuate cron changes from serverbot config"
@@ -140,11 +132,6 @@ while test -n "$1"; do
         #    ARGUMENT_OUTAGE='1'
         #    shift
         #    ;;
-
-        --backup|backup|-b)
-            ARGUMENT_BACKUP='1'
-            shift
-            ;;
 
         # methods
         --cli|cli|-c)
@@ -548,10 +535,6 @@ function serverbot_cron {
     #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
     #    echo "[+] Updating Outage on email cronjob"
     #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
-    # update backup cronjob if enabled
-    elif [ "${BACKUP_ENABLED}" == 'yes' ]; then
-        echo "[+] Updating Backup cronjob"
-        echo -e "# This cronjob activates Backup on the the chosen schedule\n\n0 ${BACKUP_CRON} * * * root /usr/local/bin/serverbot --backup" > /etc/cron.d/serverbot_backup
     fi
 
     # restart cron
@@ -971,118 +954,6 @@ function feature_updates_telegram {
     exit 0
 }
 
-function feature_backup {
-
-    # this feature function differs from most other feature functions because
-    # the methods (e.g. Telegram or CLI) are incorporated here
-
-    # set default file permission
-    umask 007
-
-    # backup files when enabled
-    if [ "${BACKUP_FILES}" == 'yes' ]; then
-        if [ "${RETENTION_DAILY}" -gt '0' ]; then
-        FILES_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_DAILY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_WEEKLY}" -gt '0' ] && [ "$(date +'%u')" -eq "${BACKUP_WEEK_DAY}" ]; then
-        FILES_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_MONTHLY}" -gt '0' ] && [ "$(date +'%d')" -eq "${BACKUP_MONTH_DAY}" ]; then
-        FILES_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_YEARLY}" -gt '0' ] && [ "$(date +'%j')" -eq "${BACKUP_YEAR_DAY}" ]; then
-        FILES_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/files/${FILES_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
-        fi
-
-        # set backup ownership
-        chown root:root /var/lib/serverbot/files/*
-
-        # touch files to prevent find from giving errors
-        touch /var/lib/serverbot/files/daily-touch
-        touch /var/lib/serverbot/files/weekly-touch
-        touch /var/lib/serverbot/files/monthly-touch
-        touch /var/lib/serverbot/files/yearly-touch
-
-        # delete older backups
-        find /var/lib/serverbot/files/daily* -mtime +"${RETENTION_DAILY}" -type f -delete
-        find /var/lib/serverbot/files/weekly* -mtime +"${RETENTION_WEEKLY}" -type f -delete
-        find /var/lib/serverbot/files/monthly* -mtime +"${RETENTION_MONTHLY}" -type f -delete
-        find /var/lib/serverbot/files/year* -mtime +"${RETENTION_YEARLY}" -type f -delete
-    fi
-
-    # backup SQL when enabled
-    if [ "${BACKUP_SQL}" == 'yes' ]; then
-        if [ "${RETENTION_DAILY}" -gt '0' ]; then
-        SQL_NAME_DAILY="daily_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_DAILY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_WEEKLY}" -gt '0' ] && [ "$(date +'%u')" -eq "${BACKUP_WEEK_DAY}" ]; then
-        SQL_NAME_WEEKLY="weekly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_WEEKLY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_MONTHLY}" -gt '0' ] && [ "$(date +'%d')" -eq "${BACKUP_MONTH_DAY}" ]; then
-        SQL_NAME_MONTHLY="monthly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
-        fi
-
-        if [ "${RETENTION_YEARLY}" -gt '0' ] && [ "$(date +'%j')" -eq "${BACKUP_YEAR_DAY}" ]; then
-        SQL_NAME_YEARLY="yearly_$(date '+%Y-%m-%d_%Hh%Mm%Ss').tar.gz"
-        tar -cpzf /var/lib/serverbot/sql/${SQL_NAME_MONTHLY} "${BACKUP_FILES_PATH}"
-        fi
-    fi
-
-    # report backup to Telegram if configured
-    if [ "${BACKUP_TELEGRAM}" == 'yes' ]; then
-        if [ -f /var/lib/serverbot/files/${FILES_NAME_DAILY} ]; then
-            FILES_DAILY_MESSAGE="\\n- ${FILES_NAME_DAILY}"
-        fi
-        if [ -f /var/lib/serverbot/files/${FILES_NAME_WEEKLY} ]; then
-            FILES_WEEKLY_MESSAGE="\\n- ${FILES_NAME_WEEKLY}"
-        fi
-        if [ -f /var/lib/serverbot/files/${FILES_NAME_MONTHLY} ]; then
-            FILES_MONTHLY_MESSAGE="\\n- ${FILES_NAME_MONTHLY}"
-        fi
-        if [ -f /var/lib/serverbot/files/${FILES_NAME_YEARLY} ]; then
-            FILES_YEARLY_MESSAGE="\\n- ${FILES_NAME_YEARLY}"
-        fi
-        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
-            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
-        fi
-        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
-            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
-        fi
-        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
-            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
-        fi
-        if [ -f /var/lib/serverbot/sql/${SQL_NAME_YEARLY} ]; then
-            SQL_YEARLY_MESSAGE="\\n- ${SQL_NAME_YEARLY}"
-        fi
-
-        # create message for Telegram
-        TELEGRAM_MESSAGE="$(echo -e "The following file backups have been created on <b>${HOSTNAME}</b>:\\n<code>${FILES_DAILY_MESSAGE}${FILES_WEEKLY_MESSAGE}${FILES_MONTHLY_MESSAGE}${FILES_YEARLY_MESSAGE}${SQL_DAILY_MESSAGE}${SQL_WEEKLY_MESSAGE}${SQL_MONTHLY_MESSAGE}${SQL_YEARLY_MESSAGE}</code>")"
-
-        # call method_telegram
-        method_telegram
-
-        # exit when done
-        exit 0
-    fi
-
-    # report backup to email if configured
-    if [ "${BACKUP_EMAIL}" == 'yes' ]; then
-        error_method_not_available
-    fi
-}
-
 #############################################################################
 # METHOD FUNCTIONS
 #############################################################################
@@ -1210,21 +1081,6 @@ function serverbot_main {
     # feature outage; method email
     elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
-    # feature backup; method none
-    elif [ "${ARGUMENT_BACKUP}" == '1' ]; then
-        requirement_root
-        gather_information_server
-        feature_backup
-    # feature backup; method cli
-    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-    #   error_not_yet_implemented
-    # feature backup; method telegram
-    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-    #    error_not_yet_implemented
-    # feature backup; method email
-    #elif [ "${ARGUMENT_BACKUP}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
-    #    error_not_yet_implemented
-    # undefined argument given
     elif [ "${ARGUMENT_NONE}" == '1' ]; then
         error_invalid_option
     fi
