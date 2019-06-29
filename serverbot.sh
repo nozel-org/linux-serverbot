@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.13.1-ALPHA (29-06-2019)
+# Version 0.14.0-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -38,7 +38,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-VERSION='0.13.1'
+VERSION='0.14.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -208,7 +208,7 @@ function error_os_not_supported {
 function error_method_not_available {
 
     echo
-    echo '[!] Error: this method is not available without Serverbot configuration file.'
+    echo '[!] Error: this method is not available without the serverbot configuration file.'
     echo
     exit 1
 }
@@ -219,47 +219,6 @@ function error_no_root_privileges {
     echo '[!] Error: you need to be root to perform this command. Use sudo or run serverbot as root.'
     echo
     exit 1
-}
-
-#############################################################################
-# GENERAL FUNCTIONS
-#############################################################################
-
-function update_os {
-
-    # update CentOS 7
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-    yum -y -q update
-    fi
-
-    # update CentOS 8+ and Fedora
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
-    dnf -y -q update
-    fi
-
-    # update Debian and Ubuntu
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
-    apt-get -qq update
-    apt-get -y -qq upgrade
-    fi
-}
-
-function check_version {
-
-    # make comparison of serverbot versions
-    echo "$@" | gawk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }';
 }
 
 #############################################################################
@@ -291,11 +250,7 @@ function requirement_os {
     # checking whether supported operating system is installed
     # source /etc/os-release to use variables
     if [ -f /etc/os-release ]; then
-        source /etc/os-release
-
-        # put distro name and version in variables
-        DISTRO="${NAME}"
-        DISTRO_VERSION="${VERSION_ID}"
+        gather_information_distro
 
         # check all supported combinations of OS and version
         if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ] || \
@@ -310,9 +265,17 @@ function requirement_os {
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
             if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
                 echo '[i] Info: operating system is supported...'
             fi
@@ -338,8 +301,67 @@ function requirement_internet {
 }
 
 #############################################################################
+# GENERAL FUNCTIONS
+#############################################################################
+
+function update_os {
+
+    # update CentOS 7
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
+        yum -y -q update
+    fi
+
+    # update CentOS 8+ and Fedora
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+        dnf -y -q update
+    fi
+
+    # update Debian and Ubuntu
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+        apt-get -qq update
+        apt-get -y -qq upgrade
+    fi
+}
+
+function check_version {
+
+    # make comparison of serverbot versions
+    echo "$@" | gawk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }';
+}
+
+#############################################################################
 # GATHER FUNCTIONS
 #############################################################################
+
+function gather_information_distro {
+
+    # get os information from os-release
+    source /etc/os-release
+
+    # put distro name and version in variables
+    DISTRO="${NAME}"
+    DISTRO_VERSION="${VERSION_ID}"
+}
 
 function gather_information_server {
 
@@ -361,16 +383,6 @@ function gather_information_network {
     EXTERNAL_IP_ADDRESS="$(curl -s ipecho.net/plain)"
 }
 
-function gather_information_distro {
-
-    # get os information from os-release
-    source /etc/os-release
-
-    # put distro name and version in variables
-    DISTRO="${NAME}"
-    DISTRO_VERSION="${VERSION_ID}"
-}
-
 function gather_metrics_cpu {
 
     # cpu and load metrics
@@ -385,11 +397,14 @@ function gather_metrics_cpu {
 function gather_metrics_memory {
 
     # check os
-    requirement_os
+    gather_information_distro
 
     # use old format of free when Debian 8 or Ubuntu 14.04 is used
     if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ]; then
+    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 15.10" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
         FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
         BUFFERS_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
@@ -411,8 +426,13 @@ function gather_metrics_memory {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
         FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
         BUFFERS_CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
@@ -441,7 +461,7 @@ function gather_metrics_threshold {
 function gather_updates {
 
     # check os
-    requirement_os
+    gather_information_distro
 
     if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
@@ -467,9 +487,17 @@ function gather_updates {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
         # update repository
         apt-get -qq update
         # list with available updates to variable AVAILABLE_UPDATES
@@ -598,9 +626,17 @@ function serverbot_install {
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
     [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
         apt-get -y -qq install aptitude bc curl gawk
     fi
 
@@ -676,8 +712,8 @@ function serverbot_self_upgrade {
     # check whether requirements are met
     echo
     requirement_root
-    requirement_os
     requirement_internet
+    gather_information_distro
 
     # gather configuration settings from user if serverbot.conf is absent, otherwise use serverbot.conf
     if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -718,9 +754,17 @@ function serverbot_self_upgrade {
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
         [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ]; then
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
             apt-get -y -qq install aptitude bc curl
         fi
 
@@ -982,6 +1026,9 @@ function method_email {
 #############################################################################
 
 function serverbot_main {
+
+    # check if os is supported
+    requirement_os
 
     # check argument validity
     requirement_argument_validity
