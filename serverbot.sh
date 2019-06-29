@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.13.0-ALPHA (28-06-2019)
+# Version 0.13.1-ALPHA (29-06-2019)
 #############################################################################
 
 #############################################################################
@@ -34,8 +34,11 @@
 # VARIABLES
 #############################################################################
 
+# number of arguments for validity check
+ARGUMENTS="${#}"
+
 # serverbot version
-VERSION='0.13.0'
+VERSION='0.13.1'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -266,7 +269,7 @@ function check_version {
 function requirement_argument_validity {
 
     # amount of arguments less than one or more than two result in error
-    if [ "${#}" -eq '0' ] || [ "${#}" -gt '2' ]; then
+    if [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
         error_invalid_option
     fi
 }
@@ -970,7 +973,7 @@ function method_telegram {
 
 function method_email {
 
-    # planned for version 1.1
+    # planned for a later version
     error_not_yet_implemented
 }
 
@@ -980,7 +983,7 @@ function method_email {
 
 function serverbot_main {
 
-    ### SOME WAY OF CHECKING VALIDITY OF INPUT HERE ###
+    # check argument validity
     requirement_argument_validity
 
     # option cron
