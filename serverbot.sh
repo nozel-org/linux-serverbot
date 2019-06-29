@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.15.0-ALPHA (30-06-2019)
+# Version 0.16.0-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -15,21 +15,6 @@
 # > GitHub      onnozel
 #############################################################################
 
-# THIS SCRIPT HAS THE FOLLOWING LAY-OUT
-# - VARIABLES
-# - ARGUMENTS
-# - GENERAL FUNCTIONS
-# - REQUIREMENT FUNCTIONS
-# - ERROR FUNCTIONS
-# - GATHER FUNCTIONS
-# - MANAGEMENT FUNCTIONS
-# - FEATURE FUNCTIONS
-# - METHOD FUNCTIONS
-# - MAIN FUNCTION
-# - CALL MAIN FUNCTION
-
-# add line numbers in index?
-
 #############################################################################
 # VARIABLES
 #############################################################################
@@ -38,7 +23,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-VERSION='0.15.0'
+VERSION='0.16.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -221,6 +206,14 @@ function error_no_root_privileges {
     exit 1
 }
 
+function error_no_internet_connection {
+
+    echo
+    echo '[!] Error: access to the internet is required.'
+    echo
+    exit 1
+}
+
 #############################################################################
 # REQUIREMENT FUNCTIONS
 #############################################################################
@@ -293,11 +286,362 @@ function requirement_internet {
     if ping -q -c 1 -W 1 google.com >/dev/null; then
         echo '[i] Info: is connected to the internet...'
     else
-        echo
-        echo '[!] Error: access to the internet is required.'
-        echo
-        exit 1
+        error_no_internet_connection
     fi
+}
+
+#############################################################################
+# MANAGEMENT FUNCTIONS
+#############################################################################
+
+function serverbot_cron {
+
+    echo
+    echo "*** UPDATING CRONJOBS ***"
+
+    # update cronjob for serverbot upgrade if enabled
+    if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
+        echo "[+] Updating cronjob for automatic upgrade"
+        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --upgrade" > /etc/cron.d/serverbot_auto_upgrade
+    # update overview cronjob if enabled
+    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
+        echo "[+] Updating Overview on Telegram cronjob"
+        echo -e "# This cronjob activates Overview on Telegram on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
+    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
+        echo "[+] Updating Overview on email cronjob"
+        echo -e "# This cronjob activates Overview on email on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
+    # update metrics cronjob if enabled
+    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
+        echo "[+] Updating Metrics on Telegram cronjob"
+        echo -e "# This cronjob activates Metrics on Telegram on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
+    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
+        echo "[+] Updating Metrics on email cronjob"
+        echo -e "# This cronjob activates Metrics on email on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
+    # update alert cronjob if enabled
+    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_TELEGRAM}" == 'yes' ]; then
+        echo "[+] Updating Alert on Telegram cronjob"
+        echo -e "# This cronjob activates Alert on Telegram on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
+    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_EMAIL}" == 'yes' ]; then
+        echo "[+] Updating Alert on email cronjob"
+        echo -e "# This cronjob activates Alert on email on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
+    # update updates cronjob if enabled
+    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
+        echo "[+] Updating Updates on Telegram cronjob"
+        echo -e "# This cronjob activates Updates on Telegram on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
+    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_EMAIL}" == 'yes' ]; then
+        echo "[+] Updating Updates on email cronjob"
+        echo -e "# This cronjob activates Updates on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
+    # update login cronjob if enabled
+    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
+        echo "[+] Updating Login on Telegram cronjob"
+        echo -e "# This cronjob activates Login on Telegram on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
+    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_EMAIL}" == 'yes' ]; then
+        echo "[+] Updating Login on email cronjob"
+        echo -e "# This cronjob activates Login on email on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
+    # update outage cronjob if enabled
+    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
+    #    echo "[+] Updating Outage on Telegram cronjob"
+    #    echo -e "# This cronjob activates Outage on Telegram on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
+    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
+    #    echo "[+] Updating Outage on email cronjob"
+    #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
+    fi
+
+    # restart cron
+    echo "[+] Restarting the cron service..."
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+        systemctl restart crond.service
+    fi
+
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ]; then
+        service cron restart
+    fi
+
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+        systemctl restart cron.service
+    fi
+
+    exit 0
+}
+
+function serverbot_install_check {
+
+    # check wheter serverbot.conf is already installed
+    if [ -f /etc/serverbot/serverbot.conf ]; then
+        while true
+            do
+                read -r -p '[?] serverbot is already installed, would you like to reinstall? (yes/no): ' REINSTALL
+                [ "${REINSTALL}" = "yes" ] || [ "${REINSTALL}" = "no" ] && break
+                echo
+                echo "[!] Error: please type yes or no and press enter to continue."
+                echo
+            done
+
+        if [ "${REINSTALL}" = "no" ]; then
+            exit 0
+        fi
+
+        if [ "${REINSTALL}" = "yes" ]; then
+            echo "[!] Serverbot will be reinstalled now..."
+            serverbot_install
+        fi
+    else
+        serverbot_install
+    fi
+}
+
+function serverbot_install {
+
+    # check whether serverbot is run as root
+    requirement_root
+    echo "[!] Serverbot will be installed now..."
+
+    # update os
+    echo "[+] Installing dependencies..."
+    update_os
+
+    # install dependencies on CentOS 7
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
+        yum -y -q install wget bc
+    fi
+
+    # install dependencies on CentOS 8+ and Fedora
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+        dnf -y -q install wget bc
+    fi
+
+    # install dependencies on Debian and Ubuntu
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+        apt-get -y -qq install aptitude bc curl gawk
+    fi
+
+    # optionally configure method telegram
+    while true
+        do
+            read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
+            [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
+            echo
+            echo "[!] Error: please type yes or no and press enter to continue."
+            echo
+        done
+
+    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+        read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
+        read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
+    fi
+
+    # add serverbot configuration file to /etc/serverbot
+    echo "[+] Adding folders to system..."
+    mkdir -m 755 /etc/serverbot
+    mkdir -m 770 /var/lib/serverbot
+    mkdir -m 770 /var/lib/serverbot/files
+    mkdir -m 770 /var/lib/serverbot/sql
+    # install latest version serverbot
+    echo "[+] Installing latest version of serverbot..."
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
+    chmod 755 /usr/local/bin/serverbot
+    echo "[+] Adding configuration file to system..."
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+    chmod 640 /etc/serverbot/serverbot.conf
+
+    # use current major version in /etc/serverbot/serverbot.conf
+    echo "[+] Adding default config parameters to configuration file..."
+    sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
+
+    # add Telegram access token and chat ID
+    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+        echo "[+] Adding access token and chat ID to bots..."
+        sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
+        sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
+    fi
+
+    # creating or updating cronjobs
+    echo "[+] Creating cronjobs..."
+    /bin/bash /usr/local/bin/serverbot --cron
+}
+
+function serverbot_upgrade {
+
+    # source most recent serverbot version
+    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
+
+    # check if most recent serverbot is newer
+    if [ "$(check_version "${VERSION_SERVERBOT}")" -gt "$(check_version "${VERSION}")" ]; then
+        # create temp file for update
+        TMP_INSTALL="$(mktemp)"
+
+        # get most recent install script
+        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+
+        # set permissions on install script
+        chmod 700 "${TMP_INSTALL}"
+
+        # execute install script
+        /bin/bash "${TMP_INSTALL}" --self-upgrade
+
+        # remove temporary file
+        rm "${TMP_INSTALL}"
+    else
+        exit 0
+    fi
+}
+
+function serverbot_self_upgrade {
+
+    # this function is used both for installing and updating serverbot
+    # if serverbot.conf exists, serverbot will be updated
+    # if serverbot.conf doesn't exist, serverbot will be installed
+
+    # check whether requirements are met
+    echo
+    requirement_root
+    requirement_internet
+    gather_information_distro
+
+    # gather configuration settings from user if serverbot.conf is absent, otherwise use serverbot.conf
+    if [ -f /etc/serverbot/serverbot.conf ]; then
+        source /etc/serverbot/serverbot.conf
+
+        # notify user that all configuration steps will be skipped
+        echo "[i] Info: existing configuration found, skipping creation..."
+        echo "[i] Info: skipping gathering tokens..."
+        echo "[i] Info: skipping gathering chat IDs..."
+        echo "[i] Info: skipping adding configuration file..."
+        echo "[i] Info: skipping adding tokens and IDs to configuration..."
+        echo "[i] Info: skipping adding cronjobs to system..."
+    else
+        echo "[i] Info: no existing configuration found, installing serverbot..."
+
+        # update os
+        echo "[+] Installing dependencies..."
+        update_os
+
+        # install dependencies on CentOS 7
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
+            yum -y -q install wget bc
+        fi
+
+        # install dependencies on CentOS 8+ and Fedora
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+            dnf -y -q install wget bc
+        fi
+
+        # install dependencies on Debian and Ubuntu
+        if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
+        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+            apt-get -y -qq install aptitude bc curl
+        fi
+
+        # optionally configure method telegram
+        while true
+            do
+                read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
+                [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
+                echo
+                echo "[!] Error: please type yes or no and press enter to continue."
+                echo
+            done
+
+        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+            read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
+            read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
+        fi
+
+        # add serverbot configuration file to /etc/serverbot
+        echo "[+] Adding folders to system..."
+        mkdir -m 755 /etc/serverbot
+        mkdir -m 770 /var/lib/serverbot
+        mkdir -m 770 /var/lib/serverbot/files
+        mkdir -m 770 /var/lib/serverbot/sql
+        echo "[+] Adding configuration file to system..."
+        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+        chmod 640 /etc/serverbot/serverbot.conf
+
+        # use current major version in /etc/serverbot/serverbot.conf
+        echo "[+] Adding default config parameters to configuration file..."
+        sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
+
+
+        # add Telegram access token and chat ID
+        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
+            echo "[+] Adding access token and chat ID to bots..."
+            sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
+            sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
+        fi
+    fi
+
+    # install latest version serverbot
+    echo "[+] Installing latest version of serverbot..."
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
+    chmod 755 /usr/local/bin/serverbot
+
+    # creating or updating cronjobs
+    /bin/bash /usr/local/bin/serverbot --cron
+
+    # some information for the user
+    echo
+    echo "Serverbot has now been installed on the system."
+    echo "Configure Serverbot by editting /etc/serverbot/serverbot.conf."
+    echo "Use 'serverbot --help' to see a list of commands."
+    echo
 }
 
 #############################################################################
@@ -505,321 +849,6 @@ function gather_updates {
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
         LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
     fi
-}
-
-#############################################################################
-# MANAGEMENT FUNCTIONS
-#############################################################################
-
-function serverbot_cron {
-
-    echo
-    echo "*** UPDATING CRONJOBS ***"
-
-    # update cronjob for serverbot upgrade if enabled
-    if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
-        echo "[+] Updating cronjob for automatic upgrade"
-        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --upgrade" > /etc/cron.d/serverbot_auto_upgrade
-    # update overview cronjob if enabled
-    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Overview on Telegram cronjob"
-        echo -e "# This cronjob activates Overview on Telegram on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
-    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Overview on email cronjob"
-        echo -e "# This cronjob activates Overview on email on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
-    # update metrics cronjob if enabled
-    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Metrics on Telegram cronjob"
-        echo -e "# This cronjob activates Metrics on Telegram on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
-    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Metrics on email cronjob"
-        echo -e "# This cronjob activates Metrics on email on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
-    # update alert cronjob if enabled
-    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Alert on Telegram cronjob"
-        echo -e "# This cronjob activates Alert on Telegram on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
-    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Alert on email cronjob"
-        echo -e "# This cronjob activates Alert on email on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
-    # update updates cronjob if enabled
-    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Updates on Telegram cronjob"
-        echo -e "# This cronjob activates Updates on Telegram on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
-    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Updates on email cronjob"
-        echo -e "# This cronjob activates Updates on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
-    # update login cronjob if enabled
-    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Login on Telegram cronjob"
-        echo -e "# This cronjob activates Login on Telegram on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
-    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Login on email cronjob"
-        echo -e "# This cronjob activates Login on email on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
-    # update outage cronjob if enabled
-    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
-    #    echo "[+] Updating Outage on Telegram cronjob"
-    #    echo -e "# This cronjob activates Outage on Telegram on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
-    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
-    #    echo "[+] Updating Outage on email cronjob"
-    #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
-    fi
-
-    # restart cron
-    echo "[+] Restarting the cron service..."
-    systemctl restart cron
-    echo
-    exit 0
-}
-
-function serverbot_install_check {
-
-    # check wheter serverbot.conf is already installed
-    if [ -f /etc/serverbot/serverbot.conf ]; then
-        while true
-            do
-                read -r -p '[?] serverbot is already installed, would you like to reinstall? (yes/no): ' REINSTALL
-                [ "${REINSTALL}" = "yes" ] || [ "${REINSTALL}" = "no" ] && break
-                echo
-                echo "[!] Error: please type yes or no and press enter to continue."
-                echo
-            done
-
-        if [ "${REINSTALL}" = "no" ]; then
-            exit 0
-        fi
-
-        if [ "${REINSTALL}" = "yes" ]; then
-            echo "[!] Serverbot will be reinstalled now..."
-            serverbot_install
-        fi
-    else
-        serverbot_install
-    fi
-}
-
-function serverbot_install {
-
-    echo "[!] Serverbot will be installed now..."
-
-    # update os
-    echo "[+] Installing dependencies..."
-    update_os
-
-    # install dependencies on CentOS 7
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-        yum -y -q install wget bc
-    fi
-
-    # install dependencies on CentOS 8+ and Fedora
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
-        dnf -y -q install wget bc
-    fi
-
-    # install dependencies on Debian and Ubuntu
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
-        apt-get -y -qq install aptitude bc curl gawk
-    fi
-
-    # optionally configure method telegram
-    while true
-        do
-            read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
-            [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
-            echo
-            echo "[!] Error: please type yes or no and press enter to continue."
-            echo
-        done
-
-    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-        read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
-        read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
-    fi
-
-    # add serverbot configuration file to /etc/serverbot
-    echo "[+] Adding folders to system..."
-    mkdir -m 755 /etc/serverbot
-    mkdir -m 770 /var/lib/serverbot
-    mkdir -m 770 /var/lib/serverbot/files
-    mkdir -m 770 /var/lib/serverbot/sql
-    echo "[+] Adding configuration file to system..."
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
-    chmod 640 /etc/serverbot/serverbot.conf
-
-    # use current major version in /etc/serverbot/serverbot.conf
-    echo "[+] Adding default config parameters to configuration file..."
-    sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
-
-    # add Telegram access token and chat ID
-    if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-        echo "[+] Adding access token and chat ID to bots..."
-        sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
-        sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
-    fi   
-}
-
-function serverbot_upgrade {
-
-    # source most recent serverbot version
-    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
-
-    # check if most recent serverbot is newer
-    if [ "$(check_version "${VERSION_SERVERBOT}")" -gt "$(check_version "${VERSION}")" ]; then
-        # create temp file for update
-        TMP_INSTALL="$(mktemp)"
-
-        # get most recent install script
-        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
-
-        # set permissions on install script
-        chmod 700 "${TMP_INSTALL}"
-
-        # execute install script
-        /bin/bash "${TMP_INSTALL}" --self-upgrade
-
-        # remove temporary file
-        rm "${TMP_INSTALL}"
-    else
-        exit 0
-    fi
-}
-
-function serverbot_self_upgrade {
-
-    # this function is used both for installing and updating serverbot
-    # if serverbot.conf exists, serverbot will be updated
-    # if serverbot.conf doesn't exist, serverbot will be installed
-
-    # check whether requirements are met
-    echo
-    requirement_root
-    requirement_internet
-    gather_information_distro
-
-    # gather configuration settings from user if serverbot.conf is absent, otherwise use serverbot.conf
-    if [ -f /etc/serverbot/serverbot.conf ]; then
-        source /etc/serverbot/serverbot.conf
-
-        # notify user that all configuration steps will be skipped
-        echo "[i] Info: existing configuration found, skipping creation..."
-        echo "[i] Info: skipping gathering tokens..."
-        echo "[i] Info: skipping gathering chat IDs..."
-        echo "[i] Info: skipping adding configuration file..."
-        echo "[i] Info: skipping adding tokens and IDs to configuration..."
-        echo "[i] Info: skipping adding cronjobs to system..."
-    else
-        echo "[i] Info: no existing configuration found, installing serverbot..."
-
-        # update os
-        echo "[+] Installing dependencies..."
-        update_os
-
-        # install dependencies on CentOS 7
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-            yum -y -q install wget bc
-        fi
-
-        # install dependencies on CentOS 8+ and Fedora
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
-            dnf -y -q install wget bc
-        fi
-
-        # install dependencies on Debian and Ubuntu
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
-            apt-get -y -qq install aptitude bc curl
-        fi
-
-        # optionally configure method telegram
-        while true
-            do
-                read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
-                [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
-                echo
-                echo "[!] Error: please type yes or no and press enter to continue."
-                echo
-            done
-
-        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-            read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
-            read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
-        fi
-
-        # add serverbot configuration file to /etc/serverbot
-        echo "[+] Adding folders to system..."
-        mkdir -m 755 /etc/serverbot
-        mkdir -m 770 /var/lib/serverbot
-        mkdir -m 770 /var/lib/serverbot/files
-        mkdir -m 770 /var/lib/serverbot/sql
-        echo "[+] Adding configuration file to system..."
-        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
-        chmod 640 /etc/serverbot/serverbot.conf
-
-        # use current major version in /etc/serverbot/serverbot.conf
-        echo "[+] Adding default config parameters to configuration file..."
-        sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
-
-
-        # add Telegram access token and chat ID
-        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-            echo "[+] Adding access token and chat ID to bots..."
-            sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
-        fi
-    fi
-
-    # install latest version serverbot
-    echo "[+] Installing latest version of serverbot..."
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
-    chmod 755 /usr/local/bin/serverbot
-
-    # creating or updating cronjobs
-    /bin/bash /usr/local/bin/serverbot --cron
-
-    # some information for the user
-    echo
-    echo "Serverbot has now been installed on the system."
-    echo "Configure Serverbot by editting /etc/serverbot/serverbot.conf."
-    echo "Use 'serverbot --help' to see a list of commands."
-    echo
 }
 
 #############################################################################
