@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.14.0-ALPHA (30-06-2019)
+# Version 0.15.0-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -38,7 +38,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-VERSION='0.14.0'
+VERSION='0.15.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -400,11 +400,11 @@ function gather_metrics_memory {
     gather_information_distro
 
     # use old format of free when Debian 8 or Ubuntu 14.04 is used
-    if [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${OPERATING_SYSTEM} ${OPERATING_SYSTEM_VERSION}" == "Ubuntu 15.10" ]; then
+    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
+    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
         FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
         BUFFERS_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
@@ -1012,7 +1012,7 @@ function method_telegram {
     TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
 
     # sent payload to Telegram API and exit
-    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" #> /dev/null 2>&1 &
+    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
 }
 
 function method_email {
