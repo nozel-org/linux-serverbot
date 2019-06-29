@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.0.0-ALPHA (28-06-2019)
+# Version 0.13.0-ALPHA (28-06-2019)
 #############################################################################
 
 #############################################################################
@@ -35,7 +35,7 @@
 #############################################################################
 
 # serverbot version
-VERSION='0.0.0'
+VERSION='0.13.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -128,10 +128,10 @@ while test -n "$1"; do
             shift
             ;;
 
-        #--outage|outage|-o)
-        #    ARGUMENT_OUTAGE='1'
-        #    shift
-        #    ;;
+        --outage|outage|-o)
+            ARGUMENT_OUTAGE='1'
+            shift
+            ;;
 
         # methods
         --cli|cli|-c)
@@ -170,13 +170,53 @@ while test -n "$1"; do
             ARGUMENT_NONE='1'
             shift
             ;;
-
-        --self-upgrade)
-            ARGUMENT_SELF_UPGRADE='1'
-            shift
-            ;;
     esac
 done
+
+#############################################################################
+# ERROR FUNCTIONS
+#############################################################################
+
+function error_invalid_option {
+
+    echo
+    echo "serverbot: invalid option -- '$@'"
+    echo "Try 'serverbot --help' for more information."
+    echo
+    exit 1
+}
+
+function error_not_yet_implemented {
+
+    echo
+    echo "[!] Error: this feature has not been implemented yet."
+    echo
+    exit 1
+}
+
+function error_os_not_supported {
+
+    echo
+    echo '[!] Error: this operating system is not supported.'
+    echo
+    exit 1
+}
+
+function error_method_not_available {
+
+    echo
+    echo '[!] Error: this method is not available without Serverbot configuration file.'
+    echo
+    exit 1
+}
+
+function error_no_root_privileges {
+
+    echo
+    echo '[!] Error: you need to be root to perform this command. Use sudo or run serverbot as root.'
+    echo
+    exit 1
+}
 
 #############################################################################
 # GENERAL FUNCTIONS
@@ -223,14 +263,19 @@ function check_version {
 # REQUIREMENT FUNCTIONS
 #############################################################################
 
+function requirement_argument_validity {
+
+    # amount of arguments less than one or more than two result in error
+    if [ "${#}" -eq '0' ] || [ "${#}" -gt '2' ]; then
+        error_invalid_option
+    fi
+}
+
 function requirement_root {
 
     # checking whether the script runs as root
     if [ "$EUID" -ne 0 ]; then
-        echo
-        echo '[!] Error: this feature requires root privileges.'
-        echo
-        exit 1
+        error_no_root_privileges
     else
         if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
             echo '[i] Info: script has correct privileges...'
@@ -287,55 +332,6 @@ function requirement_internet {
         echo
         exit 1
     fi
-}
-
-function requirement_argument_validity {
-
-    # check whether a argument was given
-    if [ $# == 0 ]; then
-        error_invalid_option
-    fi
-
-    # check whether given arguments are compatible
-    #if [ "${ARGUMENT_METRICS}" == '1' ]; && { [ "${ARGUMENT_ALERT}" == '1' ] || [ "${ARGUMENT_UPDATES}" == '1' ] || [ "${ARGUMENT_OUTAGE}" == '1' ] || [ "${ARGUMENT_BACKUP}" == '1' ]; } then
-    # } && [ "${VAR3}" == 'yes' ]; then
-}
-
-#############################################################################
-# ERROR FUNCTIONS
-#############################################################################
-
-function error_invalid_option {
-
-    echo
-    echo "serverbot: invalid option -- '$@'"
-    echo "Try 'serverbot --help' for more information."
-    echo
-    exit 1
-}
-
-function error_not_yet_implemented {
-
-    echo
-    echo "[!] Error: this feature has not been implemented yet."
-    echo
-    exit 1
-}
-
-function error_os_not_supported {
-
-    echo
-    echo '[!] Error: this operating system is not supported.'
-    echo
-    exit 1
-}
-
-function error_method_not_available {
-
-    echo
-    echo '[!] Error: this method is not available without Serverbot configuration file.'
-    echo
-    exit 1
 }
 
 #############################################################################
@@ -985,6 +981,7 @@ function method_email {
 function serverbot_main {
 
     ### SOME WAY OF CHECKING VALIDITY OF INPUT HERE ###
+    requirement_argument_validity
 
     # option cron
     if [ "${ARGUMENT_CRON}" == '1' ]; then
