@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.21-ALPHA (30-06-2019)
+# Version 0.22-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -23,24 +23,17 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-SERVERBOT_VERSION='0.21'
+SERVERBOT_VERSION='0.22'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
     source /etc/serverbot/serverbot.conf
 else
     # otherwise use these default values
-    #FEATURE_METRICS='enabled'
-    #FEATURE_ALERT='enabled'
-    #FEATURE_UPDATES='enabled'
-    #FEATURE_LOGIN='disabled' # work in progress
-    #FEATURE_OUTAGE='disabled' # work in progress
-    METHOD_CLI='enabled'
+    OPTION_CRON='disabled' # won't work without serverbot.conf
+    FEATURE_OUTAGE='disabled' # work in progress
     METHOD_TELEGRAM='disabled' # won't work without serverbot.conf
     METHOD_EMAIL='disabled' # won't work without serverbot.conf
-    FEATURE_CRON='disabled' # won't work without serverbot.conf
-    FEATURE_CONFIG='enabled'
-    FEATURE_UPGRADE='disabled' # won't work without serverbot.conf ### maybe use --upgrade for both install and upgrade with --install linking to --upgrade
 
     # alert threshold
     THRESHOLD_LOAD='90%'
@@ -99,7 +92,7 @@ while test -n "$1"; do
 
         --self-upgrade)
             ARGUMENT_SELF_UPGRADE='1'
-            ARGUMENT_OPTIONS='1'
+            ARGUMENT_OPTION='1'
             shift
             ;;
 
@@ -134,17 +127,17 @@ while test -n "$1"; do
             shift
             ;;
 
-        --logins|logins|-l)
-            ARGUMENT_LOGINS='1'
-            ARGUMENT_FEATURE='1'
-            shift
-            ;;
+        #--logins|logins|-l)
+        #    ARGUMENT_LOGINS='1'
+        #    ARGUMENT_FEATURE='1'
+        #    shift
+        #    ;;
 
-        --outage|outage|-o)
-            ARGUMENT_OUTAGE='1'
-            ARGUMENT_FEATURE='1'
-            shift
-            ;;
+        #--outage|outage|-?)
+        #    ARGUMENT_OUTAGE='1'
+        #    ARGUMENT_FEATURE='1'
+        #    shift
+        #    ;;
 
         # methods
         --cli|cli|-c)
@@ -178,7 +171,7 @@ done
 #############################################################################
 
 function error_invalid_option {
-    echo "serverbot: invalid option -- '$@'"
+    echo "serverbot: invalid option"
     echo "Try 'serverbot --help' for more information."
     exit 1
 }
@@ -198,8 +191,8 @@ function error_os_not_supported {
     exit 1
 }
 
-function error_method_not_available {
-    echo 'serverbot: method is not available without the serverbot configuration file.'
+function error_not_available {
+    echo 'serverbot: option or method is not available without the serverbot configuration file.'
     exit 1
 }
 
@@ -250,7 +243,7 @@ function requirement_argument_validity {
     # if there are two arguments, only a combination of feature and method is possible
     if [ "${ARGUMENTS}" -eq '2' ]; then
         # features require methods and vice versa, so they should add to two.
-        ARGUMENT_FEATURE_AND_METHOD="$((${ARGUMENT_FEATURE}+${ARGUMENT_METHOD}))"
+        ARGUMENT_FEATURE_AND_METHOD="$((ARGUMENT_FEATURE + ARGUMENT_METHOD))"
         # and otherwise result in an error
         if [ "${ARGUMENT_FEATURE_AND_METHOD}" -ne '2' ]; then
             error_no_feature_and_method
@@ -325,7 +318,8 @@ function serverbot_version {
 function serverbot_help {
     echo
     echo "Usage:"
-    echo " serverbot [feature/option]... [method]..."
+    echo " serverbot [feature]... [method]..."
+    echo " serverbot [options]..."
     echo
     echo "Features:"
     echo " -o, --overview        Show server overview"
@@ -333,7 +327,7 @@ function serverbot_help {
     echo " -a, --alert           Show server alert status"
     echo " -u, --updates         Show available server updates"
     #echo " -l, --logins          Show logins and logged in users"
-    #echo " -o, --outage          Check list for outage"
+    #echo " -?, --outage          Check list for outage"
     echo
     echo "Methods:"
     echo " -c, --cli             Output [feature] to command line"
@@ -353,7 +347,11 @@ function serverbot_help {
 function serverbot_cron {
     # requirements & gathering
     requirement_root
-    gather_information_distro
+
+    # c
+    if [ "${OPTION_CRON}" == 'disabled' ]; then
+        error_not_available
+    fi
 
     echo
     echo "*** UPDATING CRONJOBS ***"
@@ -502,7 +500,7 @@ function serverbot_install {
 
     # use current major version in /etc/serverbot/serverbot.conf
     echo "[+] Adding default config parameters to configuration file..."
-    sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
+    sed -i s%'major_version_here'%"$(echo "${VERSION}" | cut -c1)"%g /etc/serverbot/serverbot.conf
 
     # add telegram access token and chat id
     if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
@@ -519,8 +517,8 @@ function serverbot_install {
 function compare_version {
     # source version information from github and remove dots
     source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
-    SERVERBOT_VERSION_CURRENT_NUMBER="$(echo ${SERVERBOT_VERSION} | tr -d '.')"
-    SERVERBOT_VERSION_RELEASE_NUMBER="$(echo ${VERSION_SERVERBOT_RELEASE='0.20'} | tr -d '.')"
+    SERVERBOT_VERSION_CURRENT_NUMBER="$(echo "${SERVERBOT_VERSION}" | tr -d '.')"
+    SERVERBOT_VERSION_RELEASE_NUMBER="$(echo "${VERSION_SERVERBOT_RELEASE}" | tr -d '.')"
 
     # check whether release version has a higher version number
     if [ "${SERVERBOT_VERSION_RELEASE_NUMBER}" -gt "${SERVERBOT_VERSION_CURRENT_NUMBER}" ]; then
@@ -911,14 +909,21 @@ function feature_updates_telegram {
     exit 0
 }
 
+function feature_outage {
+    # return error when feature outage is unavailable
+    if [ "${FEATURE_OUTAGE}" == 'disabled' ]; then
+        error_not_available
+    fi
+}
+
 #############################################################################
 # METHOD FUNCTIONS
 #############################################################################
 
 function method_telegram {
-    # give error when telegram is unavailable
+    # return error when telegram is unavailable
     if [ "${METHOD_TELEGRAM}" == 'disabled' ]; then
-        error_method_not_available
+        error_not_available
     fi
 
     # create payload for Telegram
@@ -929,6 +934,11 @@ function method_telegram {
 }
 
 function method_email {
+    # return error when email is unavailable
+    if [ "${METHOD_EMAIL}" == 'disabled' ]; then
+        error_not_available
+    fi
+
     # planned for a later version
     error_not_yet_implemented
 }
