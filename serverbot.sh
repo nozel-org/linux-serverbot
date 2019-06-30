@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.18.0-ALPHA (30-06-2019)
+# Version 0.19.0-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -23,7 +23,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-SERVERBOT_VERSION='0.18.0'
+SERVERBOT_VERSION='0.19.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -213,12 +213,12 @@ function error_no_root_privileges {
 }
 
 function error_no_internet_connection {
-    echo 'ERROR: Access to the internet is required.'
+    echo 'serverbot: access to the internet is required.'
     exit 1
 }
 
 function error_type_yes_or_no {
-    echo "ERROR: Please type yes or no and press enter to continue."
+    echo "serverbot: please type yes or no and press enter to continue."
 }
 
 #############################################################################
@@ -260,44 +260,37 @@ function requirement_root {
 }
 
 function requirement_os {
-    # checking whether supported operating system is installed
-    # source /etc/os-release to use variables
-    if [ -f /etc/os-release ]; then
-        gather_information_distro
-
-        # check all supported combinations of OS and version
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
-            if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
-                echo '[i] Info: operating system is supported...'
-            fi
-        else
-            error_os_not_supported
-        fi
+    # check whether supported operating system is installed and populate relevant variables
+    # gather package manager
+    # modern rhel based distributions
+    if [ "$(command -v dnf)" ]; then
+        PACKAGE_MANAGER='dnf'
+    # old rhel based distributions
+    elif [ "$(command -v yum)" ]; then
+        PACKAGE_MANAGER='yum'
+    # debian based distributions
+    elif [ "$(command -v apt-get)" ]; then
+        PACKAGE_MANAGER='apt-get'
+    # alpine based distributions
+    elif [ "$(command -v apk)" ]; then
+        PACKAGE_MANAGER='apk'
     else
         error_os_not_supported
     fi
+    
+    # gather service manager
+    # modern systemctl
+    if [ "$(command -v systemctl)" ]; then
+        SERVICE_MANAGER='systemctl'
+    # old service
+    elif [ "$(command -v service)" ]; then
+        SERVICE_MANAGER='service'
+    # alpine based distributions
+    elif [ "$(command -v rc-service)" ]; then
+        SERVICE_MANAGER='openrc'
+    else
+        error_os_not_supported
+    fi    
 }
 
 function requirement_internet {
@@ -409,35 +402,16 @@ function serverbot_cron {
 
     # restart cron
     echo "[+] Restarting the cron service..."
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+    if [ "${SERVICE_MANAGER}" == "systemctl" ] && [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         systemctl restart crond.service
-    fi
-
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ]; then
-        service cron restart
-    fi
-
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+    elif [ "${SERVICE_MANAGER}" == "systemctl" ] && [ "${PACKAGE_MANAGER}" == "yum" ]; then
+        systemctl restart crond.service
+    elif [ "${SERVICE_MANAGER}" == "systemctl" ] && [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         systemctl restart cron.service
+    elif [ "${SERVICE_MANAGER}" == "service" ] && [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+        service cron restart
+    elif [ "${SERVICE_MANAGER}" == "rc-service" ] && [ "${PACKAGE_MANAGER}" == "apk" ]; then
+        rc-service cron start # not sure if this is correct
     fi
 
     exit 0
@@ -481,39 +455,18 @@ function serverbot_install {
     echo "[+] Installing dependencies..."
     update_os
 
-    # install dependencies on CentOS 7
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-        yum -y -q install wget bc
-    fi
-
-    # install dependencies on CentOS 8+ and Fedora
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+    # install dependencies on modern rhel based distributions
+    if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         dnf -y -q install wget bc
-    fi
-
-    # install dependencies on Debian and Ubuntu
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+    # install dependencies on older rhel based distributions
+    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+        yum -y -q install wget bc
+    # install dependencies on debian based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         apt-get -y -qq install aptitude bc curl gawk
+    # install dependencies on alpine based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+        apk add # not sure about the rest
     fi
 
     # optionally configure method telegram
@@ -610,39 +563,18 @@ function serverbot_silent_upgrade {
         echo "[+] Installing dependencies..."
         update_os
 
-        # install dependencies on CentOS 7
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-            yum -y -q install wget bc
-        fi
-
-        # install dependencies on CentOS 8+ and Fedora
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+        # install dependencies on modern rhel based distributions
+        if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
             dnf -y -q install wget bc
-        fi
-
-        # install dependencies on Debian and Ubuntu
-        if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-        [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
-            apt-get -y -qq install aptitude bc curl
+        # install dependencies on older rhel based distributions
+        elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+            yum -y -q install wget bc
+        # install dependencies on debian based distributions
+        elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+            apt-get -y -qq install aptitude bc curl gawk
+        # install dependencies on alpine based distributions
+        elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+            apk add # not sure about the rest
         fi
 
         # optionally configure method telegram
@@ -731,40 +663,18 @@ function update_os {
     requirement_root
     gather_information_distro
 
-    # update CentOS 7
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-        yum -y -q update
-    fi
-
-    # update CentOS 8+ and Fedora
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+    # update modern rhel based distributions
+    if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         dnf -y -q update
-    fi
-
-    # update Debian and Ubuntu
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
-        apt-get -qq update
-        apt-get -y -qq upgrade
+    # update older rhel based distributions
+    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+        yum -y -q update
+    # update debian based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
+        apt-get -qq update && apt-get -y -qq upgrade
+    # update alpine based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+        apk # not sure about the rest
     fi
 }
 
@@ -818,15 +728,11 @@ function gather_metrics_cpu {
 }
 
 function gather_metrics_memory {
-    # requirements and gathering
-    gather_information_distro
+    # gather software version of the free tool
+    FREE_VERSION="$(free --version | awk '{ print $NF }' | tr -d '.')"
 
-    # use old format of free when Debian 8 or Ubuntu 14.04 is used
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ]; then
+    # use old format when old version of free is used
+    if [ "${FREE_VERSION}" -le "339" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
         FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
         BUFFERS_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
@@ -834,27 +740,8 @@ function gather_metrics_memory {
         USED_MEMORY="$(echo "(${TOTAL_MEMORY}-${FREE_MEMORY}-${BUFFERS_MEMORY}-${CACHED_MEMORY})" | bc -l)"
         CURRENT_MEMORY_PERCENTAGE="$(echo "(${USED_MEMORY}/${TOTAL_MEMORY})*100" | bc -l)"
         CURRENT_MEMORY_PERCENTAGE_ROUNDED="$(printf "%.0f\n" $(echo "${CURRENT_MEMORY_PERCENTAGE}" | tr -d '%'))"
-    fi
-
-    # use newer format in free when CentOS 7+, Debian 9+ or Ubuntu 16.04+ is used
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+    # use newer format when newer version of free is used
+    elif [ "${FREE_VERSION}" -gt "339" ]; then
         TOTAL_MEMORY="$(free -m | awk '/^Mem/ {print $2}')"
         FREE_MEMORY="$(free -m | awk '/^Mem/ {print $4}')"
         BUFFERS_CACHED_MEMORY="$(free -m | awk '/^Mem/ {print $6}')"
@@ -883,47 +770,29 @@ function gather_updates {
     requirement_root
     gather_information_distro
 
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
-        # list with available updates to variable AVAILABLE_UPDATES
-        AVAILABLE_UPDATES="$(yum check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
-        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
-        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
-    fi
-
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 27" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 28" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 29" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 30" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Fedora 31" ]; then
+    # gather updates on modern rhel based distributions
+    if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
         LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
-    fi
-
-    if [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 8" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 9" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Debian GNU/Linux 11" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 14.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 15.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 16.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 17.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 18.10" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.04" ] || \
-    [ "${DISTRO} ${DISTRO_VERSION}" == "Ubuntu 19.10" ]; then
+    # gather updates on older rhel based distributions
+    elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
+        # list with available updates to variable AVAILABLE_UPDATES
+        AVAILABLE_UPDATES="$(yum check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
+        # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
+        LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
+    # gather updates on debian based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         # update repository
         apt-get -qq update
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(aptitude -F "%p" search '~U')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
         LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
+    # gather updates on alpine based distributions
+    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+        apk # not sure
     fi
 }
 
