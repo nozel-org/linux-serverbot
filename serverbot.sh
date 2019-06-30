@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.20-ALPHA (30-06-2019)
+# Version 0.21-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -23,7 +23,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-SERVERBOT_VERSION='0.20'
+SERVERBOT_VERSION='0.21'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -569,7 +569,10 @@ function serverbot_silent_upgrade {
     fi
 }
 
-function serverbot_self_upgrade
+function serverbot_self_upgrade {
+    # requirements and gathering
+    requirement_root
+
     # download most recent version and add permissions
     wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
     chmod 755 /usr/local/bin/serverbot
@@ -953,7 +956,7 @@ function serverbot_main {
     elif [ "${ARGUMENT_UPGRADE}" == '1' ]; then
         serverbot_upgrade
     elif [ "${ARGUMENT_SILENT_UPGRADE}" == '1' ]; then
-        serverbot_upgrade
+        serverbot_silent_upgrade
     elif [ "${ARGUMENT_SELF_UPGRADE}" == '1' ]; then
         serverbot_self_upgrade
     elif [ "${ARGUMENT_UNINSTALL}" == '1' ]; then
