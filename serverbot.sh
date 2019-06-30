@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.16.0-ALPHA (30-06-2019)
+# Version 0.17.0-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -23,7 +23,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-VERSION='0.16.0'
+VERSION='0.17.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -78,6 +78,7 @@ while test -n "$1"; do
             echo " -m, --metrics         Show server metrics"
             echo " -a, --alert           Show server alert status"
             echo " -u, --updates         Show available server updates"
+            #echo " -l, --logins          Show logins and logged in users"
             #echo " -o, --outage          Check list for outage"
             echo
             echo "Methods:"
@@ -89,6 +90,7 @@ while test -n "$1"; do
             echo " --cron               Effectuate cron changes from serverbot config"
             echo " --install            Installs serverbot on the system and unlocks all features"
             echo " --upgrade            Upgrade serverbot to the latest stable version"
+            echo " --uninstall          Uninstalls serverbot from the system"
             echo " --help               Display this help and exit"
             echo " --version            Display version information and exit"
             echo
@@ -98,58 +100,87 @@ while test -n "$1"; do
         # features
         --overview|overview|-o)
             ARGUMENT_OVERVIEW='1'
+            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --metrics|metrics|-m)
             ARGUMENT_METRICS='1'
+            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --alert|alert|-a)
             ARGUMENT_ALERT='1'
+            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --updates|updates|-u)
             ARGUMENT_UPDATES='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --logins|logins|-l)
+            ARGUMENT_LOGINS='1'
+            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --outage|outage|-o)
             ARGUMENT_OUTAGE='1'
+            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         # methods
         --cli|cli|-c)
             ARGUMENT_CLI='1'
+            ARGUMENT_METHOD='1'
             shift
             ;;
 
         --telegram|telegram|-t)
             ARGUMENT_TELEGRAM='1'
+            ARGUMENT_METHOD='1'
             shift
             ;;
 
         --email|email|-e)
             ARGUMENT_EMAIL='1'
+            ARGUMENT_METHOD='1'
             shift
             ;;
 
         # options
         --cron)
             ARGUMENT_CRON='1'
+            ARGUMENT_OPTION='1'
             shift
             ;;
 
         --install)
             ARGUMENT_INSTALL='1'
+            ARGUMENT_OPTION='1'
             shift
             ;;
 
         --upgrade)
             ARGUMENT_UPGRADE='1'
+            ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        --silent-upgrade)
+            ARGUMENT_SILENT_UPGRADE='1'
+            ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        --uninstall)
+            ARGUMENT_UNINSTALL='1'
+            ARGUMENT_OPTION='1'
             shift
             ;;
 
@@ -214,6 +245,13 @@ function error_no_internet_connection {
     exit 1
 }
 
+function error_type_yes_or_no {
+
+    echo
+    echo "[!] Error: please type yes or no and press enter to continue."
+    echo
+}
+
 #############################################################################
 # REQUIREMENT FUNCTIONS
 #############################################################################
@@ -224,6 +262,16 @@ function requirement_argument_validity {
     if [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
         error_invalid_option
     fi
+
+    # options are incompatible with features
+    if [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_FEATURE}" == '1' ]; then
+        error_invalid_option
+    fi
+
+    # options are incompatible with methods
+    if [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
+        error_invalid_option
+    fi
 }
 
 function requirement_root {
@@ -231,10 +279,6 @@ function requirement_root {
     # checking whether the script runs as root
     if [ "$EUID" -ne 0 ]; then
         error_no_root_privileges
-    else
-        if [ "${ARGUMENT_UPGRADE}" == '1' ]; then
-            echo '[i] Info: script has correct privileges...'
-        fi
     fi
 }
 
@@ -295,6 +339,10 @@ function requirement_internet {
 #############################################################################
 
 function serverbot_cron {
+
+    # requirements & gathering
+    requirement_root
+    gather_information_distro
 
     echo
     echo "*** UPDATING CRONJOBS ***"
@@ -387,32 +435,36 @@ function serverbot_install_check {
 
     # check wheter serverbot.conf is already installed
     if [ -f /etc/serverbot/serverbot.conf ]; then
+        # if true, ask the user whether a reinstall is intended
         while true
             do
                 read -r -p '[?] serverbot is already installed, would you like to reinstall? (yes/no): ' REINSTALL
                 [ "${REINSTALL}" = "yes" ] || [ "${REINSTALL}" = "no" ] && break
-                echo
-                echo "[!] Error: please type yes or no and press enter to continue."
-                echo
+                error_type_yes_or_no
             done
 
+        # exit if not intended
         if [ "${REINSTALL}" = "no" ]; then
             exit 0
         fi
 
+        # reinstall when intended
         if [ "${REINSTALL}" = "yes" ]; then
             echo "[!] Serverbot will be reinstalled now..."
             serverbot_install
         fi
     else
+        # if serverbot isn't currently installed, install it right away
         serverbot_install
     fi
 }
 
 function serverbot_install {
 
-    # check whether serverbot is run as root
+    # requirements and gathering
     requirement_root
+    gather_information_distro
+
     echo "[!] Serverbot will be installed now..."
 
     # update os
@@ -459,9 +511,7 @@ function serverbot_install {
         do
             read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
             [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
-            echo
-            echo "[!] Error: please type yes or no and press enter to continue."
-            echo
+            error_type_yes_or_no
         done
 
     if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
@@ -469,16 +519,14 @@ function serverbot_install {
         read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
     fi
 
-    # add serverbot configuration file to /etc/serverbot
+    # add serverbot folder to /etc and add permissions
     echo "[+] Adding folders to system..."
     mkdir -m 755 /etc/serverbot
-    mkdir -m 770 /var/lib/serverbot
-    mkdir -m 770 /var/lib/serverbot/files
-    mkdir -m 770 /var/lib/serverbot/sql
-    # install latest version serverbot
+    # install latest version serverbot and add permissions
     echo "[+] Installing latest version of serverbot..."
     wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
     chmod 755 /usr/local/bin/serverbot
+    # add serverbot configuration file to /etc/serverbot and add permissions
     echo "[+] Adding configuration file to system..."
     wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
     chmod 640 /etc/serverbot/serverbot.conf
@@ -487,7 +535,7 @@ function serverbot_install {
     echo "[+] Adding default config parameters to configuration file..."
     sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
 
-    # add Telegram access token and chat ID
+    # add telegram access token and chat id
     if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
         echo "[+] Adding access token and chat ID to bots..."
         sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
@@ -500,6 +548,10 @@ function serverbot_install {
 }
 
 function serverbot_upgrade {
+
+    # requirements and gathering
+    requirement_root
+    gather_information_distro
 
     # source most recent serverbot version
     source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
@@ -531,8 +583,7 @@ function serverbot_self_upgrade {
     # if serverbot.conf exists, serverbot will be updated
     # if serverbot.conf doesn't exist, serverbot will be installed
 
-    # check whether requirements are met
-    echo
+    # requirements & gathering
     requirement_root
     requirement_internet
     gather_information_distro
@@ -595,9 +646,7 @@ function serverbot_self_upgrade {
             do
                 read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
                 [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
-                echo
-                echo "[!] Error: please type yes or no and press enter to continue."
-                echo
+                error_type_yes_or_no
             done
 
         if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
@@ -608,9 +657,6 @@ function serverbot_self_upgrade {
         # add serverbot configuration file to /etc/serverbot
         echo "[+] Adding folders to system..."
         mkdir -m 755 /etc/serverbot
-        mkdir -m 770 /var/lib/serverbot
-        mkdir -m 770 /var/lib/serverbot/files
-        mkdir -m 770 /var/lib/serverbot/sql
         echo "[+] Adding configuration file to system..."
         wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
         chmod 640 /etc/serverbot/serverbot.conf
@@ -644,11 +690,44 @@ function serverbot_self_upgrade {
     echo
 }
 
+function serverbot_uninstall {
+
+    # requirements and gathering
+    requirement_root
+
+    # ask whether uninstall was intended
+    while true
+        do
+            read -r -p '[?] Are you sure you want to uninstall serverbot? (yes/no): ' UNINSTALL
+            [ "${UNINSTALL}" = "yes" ] || [ "${UNINSTALL}" = "no" ] && break
+            error_type_yes_or_no
+       done
+
+        # exit if not intended
+        if [ "${UNINSTALL}" = "no" ]; then
+            exit 0
+        fi
+
+        # uninstall when intended
+        if [ "${UNINSTALL}" = "yes" ]; then
+            echo "[!] Serverbot will be uninstalled now..."
+            echo "[-] Removing serverbot.conf from system..."
+            rm -rf /etc/serverbot
+            echo "[-] Removing serverbot from system..."
+            rm /usr/local/bin/serverbot
+            exit 0
+        fi
+}
+
 #############################################################################
 # GENERAL FUNCTIONS
 #############################################################################
 
 function update_os {
+
+    # requirements and gathering
+    requirement_root
+    gather_information_distro
 
     # update CentOS 7
     if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
@@ -729,6 +808,9 @@ function gather_information_network {
 
 function gather_metrics_cpu {
 
+    # requirements and gathering
+    requirement_root
+
     # cpu and load metrics
     CORE_AMOUNT="$(grep -c 'cpu cores' /proc/cpuinfo)"
     MAX_LOAD_SERVER="${CORE_AMOUNT}.00"
@@ -740,7 +822,7 @@ function gather_metrics_cpu {
 
 function gather_metrics_memory {
 
-    # check os
+    # requirements and gathering
     gather_information_distro
 
     # use old format of free when Debian 8 or Ubuntu 14.04 is used
@@ -804,7 +886,8 @@ function gather_metrics_threshold {
 
 function gather_updates {
 
-    # check os
+    # requirements and gathering
+    requirement_root
     gather_information_distro
 
     if [ "${DISTRO} ${DISTRO_VERSION}" == "CentOS Linux 7" ]; then
@@ -923,8 +1006,7 @@ function feature_metrics_telegram {
 
 function feature_alert_cli {
 
-    # check whether the current server load exceeds the threshold and alert if true
-    # and output server alert status to shell
+    # check whether the current server load exceeds the threshold and alert if true. Output server alert status to shell.
     echo
     if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
@@ -1070,8 +1152,10 @@ function serverbot_main {
         serverbot_install_check
     elif [ "${ARGUMENT_UPGRADE}" == '1' ]; then
         serverbot_upgrade
-    elif [ "${ARGUMENT_SELF_UPGRADE}" == '1' ]; then
-        serverbot_self_upgrade
+    elif [ "${ARGUMENT_SILENT_UPGRADE}" == '1' ]; then
+        serverbot_upgrade
+    elif [ "${ARGUMENT_UNINSTALL}" == '1' ]; then
+        serverbot_uninstall
     # feature overview; method telegram
     elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
         gather_information_server

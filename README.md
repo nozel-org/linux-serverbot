@@ -22,7 +22,7 @@ Some of the features use linux distribution specific dependencies or components,
 
 | Distribution | Overview | Metrics | Alert | Updates | CLI | Telegram |
 | ------------ | -------- | ------- | ----- | ------- | --- | -------- |
-| CentOS Linux 7 | | | | | | |
+| CentOS Linux 7 | OK | OK | OK | OK | OK | OK |
 | CentOS Linux 8 | N/A | N/A | N/A | N/A | N/A | N/A |
 | Fedora 27 | | | | | | |
 | Fedora 28 | | | | | | |
