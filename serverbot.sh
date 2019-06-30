@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.22-ALPHA (30-06-2019)
+# Version 0.23-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -19,23 +19,20 @@
 # VARIABLES
 #############################################################################
 
-# number of arguments for validity check
-ARGUMENTS="${#}"
-
 # serverbot version
-SERVERBOT_VERSION='0.22'
+SERVERBOT_VERSION='0.23'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
     source /etc/serverbot/serverbot.conf
 else
-    # otherwise use these default values
+    # otherwise disable these options, features and methods
     OPTION_CRON='disabled' # won't work without serverbot.conf
     FEATURE_OUTAGE='disabled' # work in progress
     METHOD_TELEGRAM='disabled' # won't work without serverbot.conf
     METHOD_EMAIL='disabled' # won't work without serverbot.conf
 
-    # alert threshold
+    # and use these default values for the alert threshold
     THRESHOLD_LOAD='90%'
     THRESHOLD_MEMORY='80%'
     THRESHOLD_DISK='80%'
@@ -44,6 +41,9 @@ fi
 #############################################################################
 # ARGUMENTS
 #############################################################################
+
+# save amount of arguments for validity check
+ARGUMENTS="${#}"
 
 # populate validation variables with zero
 ARGUMENT_OPTION='0'
@@ -171,13 +171,14 @@ done
 #############################################################################
 
 function error_invalid_option {
-    echo "serverbot: invalid option"
-    echo "Try 'serverbot --help' for more information."
+    echo 'serverbot: invalid option'
+    echo "Use 'serverbot --help' for a list of valid arguments."
     exit 1
 }
 
 function error_wrong_number_of_arguments {
-    echo "serverbot: wrong number of arguments, use 'serverbot --help' for a list of valid arguments."
+    echo 'serverbot: wrong number of arguments'
+    echo "Use 'serverbot --help' for a list of valid arguments."
     exit 1
 }
 
@@ -197,17 +198,20 @@ function error_not_available {
 }
 
 function error_no_feature_and_method {
-    echo "serverbot: feature requires a method and vice versa, use 'serverbot --help' for a list of features and methods."
+    echo 'serverbot: feature requires a method and vice versa'
+    echo "Use 'serverbot --help' for a list of valid arguments."
     exit 1
 }
 
 function error_options_cannot_be_combined {
-    echo "serverbot: options cannot be used with features or methods, use 'serverbot --help' for a list of valid arguments."
+    echo 'serverbot: options cannot be used with features or methods'
+    echo "Use 'serverbot --help' for a list of valid arguments."
     exit 1    
 }
 
 function error_no_root_privileges {
-    echo 'serverbot: you need to be root to perform this command, use sudo or run serverbot as root.'
+    echo 'serverbot: you need to be root to perform this command'
+    echo "use 'sudo serverbot', 'sudo -s' or run serverbot as root user."
     exit 1
 }
 
@@ -217,7 +221,7 @@ function error_no_internet_connection {
 }
 
 function error_type_yes_or_no {
-    echo "serverbot: please type yes or no and press enter to continue."
+    echo "serverbot: type yes or no and press enter to continue."
 }
 
 #############################################################################
@@ -228,20 +232,14 @@ function requirement_argument_validity {
     # amount of arguments less than one or more than two result in error
     if [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
         error_wrong_number_of_arguments
-    fi
-
     # options are incompatible with features
-    if [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_FEATURE}" == '1' ]; then
+    elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_FEATURE}" == '1' ]; then
         error_options_cannot_be_combined
-    fi
-
     # options are incompatible with methods
-    if [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
+    elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
         error_options_cannot_be_combined
-    fi
-
     # if there are two arguments, only a combination of feature and method is possible
-    if [ "${ARGUMENTS}" -eq '2' ]; then
+    elif [ "${ARGUMENTS}" -eq '2' ]; then
         # features require methods and vice versa, so they should add to two.
         ARGUMENT_FEATURE_AND_METHOD="$((ARGUMENT_FEATURE + ARGUMENT_METHOD))"
         # and otherwise result in an error
@@ -252,15 +250,14 @@ function requirement_argument_validity {
 }
 
 function requirement_root {
-    # checking whether the script runs as root
+    # check whether the script runs as root
     if [ "$EUID" -ne 0 ]; then
         error_no_root_privileges
     fi
 }
 
 function requirement_os {
-    # check whether supported operating system is installed and populate relevant variables
-    # gather package manager
+    # check whether supported package manager is installed and populate relevant variables
     # modern rhel based distributions
     if [ "$(command -v dnf)" ]; then
         PACKAGE_MANAGER='dnf'
@@ -277,14 +274,14 @@ function requirement_os {
         error_os_not_supported
     fi
     
-    # gather service manager
-    # modern systemctl
+    # check whether supported service manager is installed and populate relevant variables
+    # systemctl
     if [ "$(command -v systemctl)" ]; then
         SERVICE_MANAGER='systemctl'
-    # old service
+    # service
     elif [ "$(command -v service)" ]; then
         SERVICE_MANAGER='service'
-    # alpine based distributions
+    # openrc
     elif [ "$(command -v rc-service)" ]; then
         SERVICE_MANAGER='openrc'
     else
@@ -293,9 +290,9 @@ function requirement_os {
 }
 
 function requirement_internet {
-    # checking internet connection
+    # check internet connection
     if ping -q -c 1 -W 1 google.com >/dev/null; then
-        echo '[i] Info: is connected to the internet...'
+        echo '[i] Info: device is connected to the internet...'
     else
         error_no_internet_connection
     fi
@@ -319,7 +316,7 @@ function serverbot_help {
     echo
     echo "Usage:"
     echo " serverbot [feature]... [method]..."
-    echo " serverbot [options]..."
+    echo " serverbot [option]..."
     echo
     echo "Features:"
     echo " -o, --overview        Show server overview"
@@ -348,64 +345,87 @@ function serverbot_cron {
     # requirements & gathering
     requirement_root
 
-    # c
+    # return error when config file isn't installed on the system
     if [ "${OPTION_CRON}" == 'disabled' ]; then
         error_not_available
     fi
 
-    echo
-    echo "*** UPDATING CRONJOBS ***"
-
+    echo '*** UPDATING CRONJOBS ***'
+    # remove cronjobs so automated tasks can also be deactivated
+    echo '[-] Removing old serverbot cronjobs...'
+    rm -f /etc/cron.d/serverbot_*
     # update cronjob for serverbot upgrade if enabled
     if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
-        echo "[+] Updating cronjob for automatic upgrade"
-        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --upgrade" > /etc/cron.d/serverbot_auto_upgrade
+        echo '[+] Updating cronjob for automated upgrade of serverbot...'
+        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
+    fi
     # update overview cronjob if enabled
-    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Overview on Telegram cronjob"
-        echo -e "# This cronjob activates Overview on Telegram on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
-    elif [ "${OVERVIEW_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Overview on email cronjob"
-        echo -e "# This cronjob activates Overview on email on the chosen schedule\n\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
+    if [ "${OVERVIEW_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated server overviews on Telegram...'
+        echo -e "# This cronjob activates automated server overview on Telegram on the chosen schedule\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
+    fi
+    #if [ "${OVERVIEW_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated server overviews on email...'
+    #    echo -e "# This cronjob activates automated server overview on email on the chosen schedule\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
+    #fi
     # update metrics cronjob if enabled
-    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Metrics on Telegram cronjob"
-        echo -e "# This cronjob activates Metrics on Telegram on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
-    elif [ "${METRICS_ENABLED}" == 'yes' ] && [ "${METRICS_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Metrics on email cronjob"
-        echo -e "# This cronjob activates Metrics on email on the chosen schedule\n\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
+    if [ "${METRICS_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated server metrics on Telegram...'
+        echo -e "# This cronjob activates automated server metrics on Telegram on the chosen schedule\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
+    fi
+    #if [ "${METRICS_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated server metrics on email...'
+    #    echo -e "# This cronjob activates automated server metrics on email on the chosen schedule\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
+    #fi
     # update alert cronjob if enabled
-    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Alert on Telegram cronjob"
-        echo -e "# This cronjob activates Alert on Telegram on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
-    elif [ "${ALERT_ENABLED}" == 'yes' ] && [ "${ALERT_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Alert on email cronjob"
-        echo -e "# This cronjob activates Alert on email on the chosen schedule\n\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
+    if [ "${ALERT_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated server health alerts on Telegram...'
+        echo -e "# This cronjob activates automated server health alerts on Telegram on the chosen schedule\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
+    fi
+    #if [ "${ALERT_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated server health alerts on email...'
+    #    echo -e "# This cronjob activates automated server health alerts alert on email on the chosen schedule\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
+    #fi
     # update updates cronjob if enabled
-    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Updates on Telegram cronjob"
-        echo -e "# This cronjob activates Updates on Telegram on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
-    elif [ "${UPDATES_ENABLED}" == 'yes' ] && [ "${UPDATES_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Updates on email cronjob"
-        echo -e "# This cronjob activates Updates on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
+    if [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated update overviews on Telegram...'
+        echo -e "# This cronjob activates automated update overviews on Telegram on the the chosen schedule\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
+    fi
+    #if [ "${UPDATES_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated update overviews on email...'
+    #    echo -e "# This cronjob activates automated update overviews on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
+    #fi
     # update login cronjob if enabled
-    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
-        echo "[+] Updating Login on Telegram cronjob"
-        echo -e "# This cronjob activates Login on Telegram on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
-    elif [ "${LOGIN_ENABLED}" == 'yes' ] && [ "${LOGIN_EMAIL}" == 'yes' ]; then
-        echo "[+] Updating Login on email cronjob"
-        echo -e "# This cronjob activates Login on email on the the chosen schedule\n\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
+    if [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated login notifications on Telegram...'
+        echo -e "# This cronjob activates automated login notifications on Telegram on the the chosen schedule\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
+    fi
+    #if [ "${LOGIN_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated login notifications on email...'
+    #    echo -e "# This cronjob activates automated login notifications on email on the the chosen schedule\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
+    #fi
     # update outage cronjob if enabled
-    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
-    #    echo "[+] Updating Outage on Telegram cronjob"
-    #    echo -e "# This cronjob activates Outage on Telegram on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
-    #elif [ "$OUTAGE_ENABLED" == 'yes' ] && [ "$OUTAGE_EMAIL" == 'yes' ]; then
-    #    echo "[+] Updating Outage on email cronjob"
-    #    echo -e "# This cronjob activates Outage on email on the the chosen schedule\n\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
+    #if [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for outage notifications on Telegram...'
+    #    echo -e "# This cronjob activates outage notifications on Telegram on the the chosen schedule\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
+    #fi
+    #if [ "$OUTAGE_EMAIL" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for outage notifications on email...'
+    #    echo -e "# This cronjob activates outage notifications on email on the the chosen schedule\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
+    #fi
+
+    # give user feedback when all automated tasks are disabled
+    if [ "${SERVERBOT_UPGRADE}" != 'yes' ] && \
+    [ "${OVERVIEW_TELEGRAM}" != 'yes' ] && \
+    [ "${METRICS_TELEGRAM}" != 'yes' ] && \
+    [ "${ALERT_TELEGRAM}" != 'yes' ] && \
+    [ "${UPDATES_TELEGRAM}" != 'yes' ]; then
+        echo '[i] All automated tasks are disabled, no cronjobs to update...'
+        exit 0
     fi
 
-    # restart cron
-    echo "[+] Restarting the cron service..."
+    # restart cron to really effectuate the new cronjobs
+    echo '[+] Restarting the cron service...'
     if [ "${SERVICE_MANAGER}" == "systemctl" ] && [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         systemctl restart crond.service
     elif [ "${SERVICE_MANAGER}" == "systemctl" ] && [ "${PACKAGE_MANAGER}" == "yum" ]; then
@@ -414,10 +434,10 @@ function serverbot_cron {
         systemctl restart cron.service
     elif [ "${SERVICE_MANAGER}" == "service" ] && [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         service cron restart
-    elif [ "${SERVICE_MANAGER}" == "rc-service" ] && [ "${PACKAGE_MANAGER}" == "apk" ]; then
-        rc-service cron start # not sure if this is correct
+    #elif [ "${SERVICE_MANAGER}" == "rc-service" ] && [ "${PACKAGE_MANAGER}" == "apk" ]; then
+    #    rc-service cron start # not sure if this is correct
     fi
-
+    echo '[i] Done'
     exit 0
 }
 
@@ -531,6 +551,7 @@ function serverbot_upgrade {
     requirement_root
     compare_version
 
+    # install new version if more recent version is available
     if [ "${NEW_VERSION_AVAILABLE}" == '1' ]; then
         echo "[i] New version of serverbot available, installing now..."
         echo "[i] Create temporary file for self-upgrade..."
@@ -597,11 +618,13 @@ function serverbot_uninstall {
 
         # uninstall when intended
         if [ "${UNINSTALL}" = "yes" ]; then
-            echo "[!] Serverbot will be uninstalled now..."
+            echo "[i] Serverbot will be uninstalled now..."
+            echo "[-] Removing serverbot cronjobs from system..."
+            rm -f /etc/cron.d/serverbot_*
             echo "[-] Removing serverbot.conf from system..."
             rm -rf /etc/serverbot
             echo "[-] Removing serverbot from system..."
-            rm /usr/local/bin/serverbot
+            rm -f /usr/local/bin/serverbot
             exit 0
         fi
 }
