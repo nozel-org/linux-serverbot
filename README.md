@@ -20,7 +20,36 @@ Aside from features, there are also different methods that can be used with the 
 Some examples from both Telegram and CLI:
 ![alt text](https://raw.githubusercontent.com/nozel-org/serverbot/master/overview.jpg "feature examples")
 
-Using serverbot is easy, just type in 'serverbot' with both a feature and method. For example `serverbot --metrics --telegram` or the shorter notation `serverbot -m -t`. Parameters can be configured from a central configuration file in `/etc/serverbot/serverbot.conf`.
+# How to use serverbot
+Easy! Download [`serverbot.sh`](https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh) to your device and run it (`bash serverbot.sh --install`) to install. After installing serverbot you can just run `serverbot` as a normal command. For example `serverbot --metrics --cli` or the shorter notation `serverbot -m -c`. Parameters like automated tasks and thresholds can be configured from a central configuration file in `/etc/serverbot/serverbot.conf`.
+
+`serverbot --help` provides an easy overview of arguments:
+```
+root@server:~# serverbot --help
+Usage:
+ serverbot [feature]... [method]...
+ serverbot [option]...
+
+Features:
+ -o, --overview        Show server overview
+ -m, --metrics         Show server metrics
+ -a, --alert           Show server alert status
+ -u, --updates         Show available server updates
+
+Methods:
+ -c, --cli             Output [feature] to command line
+ -t, --telegram        Output [feature] to Telegram bot
+
+Options:
+ --cron               Effectuate cron changes from serverbot config
+ --install            Installs serverbot on the system and unlocks all features
+ --upgrade            Upgrade serverbot to the latest stable version
+ --uninstall          Uninstalls serverbot from the system
+ --help               Display this help and exit
+ --version            Display version information and exit
+```
+
+For information on how to aquire a Telegram bot, look at [Telegram's documentation](https://core.telegram.org/bots).
 
 # Compatibility
 We try to support a wide range of linux distributions. As of now, support includes most distro's that use apt-get, yum or dnf. This includes at least the following distributions (which are tested):
@@ -51,7 +80,9 @@ Ideas and plans for future features are:
 * Extend feature alert with filesystem monitoring.
 * Extend feature alert with CPU / HDD temperature monitoring.
 * Extend feature alert with USB device monitoring.
+* Extend feature overview with logged in users.
 * Add method email.
+* Add feature EOL which notifies the user whenever the OS is nearing EOL status.
 * Add feature outage which monitors the availability of other remote systems and reports the status.
 * Add support for Alpine Linux.
 * Add support for NixOS.
