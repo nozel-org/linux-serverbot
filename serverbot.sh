@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.19.0-ALPHA (30-06-2019)
+# Version 0.20-ALPHA (30-06-2019)
 #############################################################################
 
 #############################################################################
@@ -23,7 +23,7 @@
 ARGUMENTS="${#}"
 
 # serverbot version
-SERVERBOT_VERSION='0.19.0'
+SERVERBOT_VERSION='0.20'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -94,6 +94,12 @@ while test -n "$1"; do
         --silent-upgrade)
             ARGUMENT_SILENT_UPGRADE='1'
             ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        --self-upgrade)
+            ARGUMENT_SELF_UPGRADE='1'
+            ARGUMENT_OPTIONS='1'
             shift
             ;;
 
@@ -463,7 +469,7 @@ function serverbot_install {
         yum -y -q install wget bc
     # install dependencies on debian based distributions
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-        apt-get -y -qq install aptitude bc curl gawk
+        apt-get -y -qq install aptitude bc curl
     # install dependencies on alpine based distributions
     elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         apk add # not sure about the rest
@@ -510,120 +516,65 @@ function serverbot_install {
     /bin/bash /usr/local/bin/serverbot --cron
 }
 
+function compare_version {
+    # source version information from github and remove dots
+    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
+    SERVERBOT_VERSION_CURRENT_NUMBER="$(echo ${SERVERBOT_VERSION} | tr -d '.')"
+    SERVERBOT_VERSION_RELEASE_NUMBER="$(echo ${VERSION_SERVERBOT_RELEASE='0.20'} | tr -d '.')"
+
+    # check whether release version has a higher version number
+    if [ "${SERVERBOT_VERSION_RELEASE_NUMBER}" -gt "${SERVERBOT_VERSION_CURRENT_NUMBER}" ]; then
+        NEW_VERSION_AVAILABLE='1'
+    fi
+}
+
 function serverbot_upgrade {
     # requirements and gathering
     requirement_root
-    gather_information_distro
+    compare_version
 
-    # source most recent serverbot version
-    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
-
-    # check if most recent serverbot is newer
-    if [ "$(check_version "${VERSION_SERVERBOT}")" -gt "$(check_version "${VERSION}")" ]; then
-        # create temp file for update
+    if [ "${NEW_VERSION_AVAILABLE}" == '1' ]; then
+        echo "[i] New version of serverbot available, installing now..."
+        echo "[i] Create temporary file for self-upgrade..."
         TMP_INSTALL="$(mktemp)"
-
-        # get most recent install script
+        echo "[i] Download most recent version of serverbot..."
         wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
-
-        # set permissions on install script
+        echo "[i] Set permissions on installation script..."
         chmod 700 "${TMP_INSTALL}"
-
-        # execute install script
+        echo "[i] Executing installation script..."
         /bin/bash "${TMP_INSTALL}" --self-upgrade
-
-        # remove temporary file
-        rm "${TMP_INSTALL}"
     else
+        echo "[i] No new version of serverbot available."
         exit 0
     fi
 }
 
 function serverbot_silent_upgrade {
-    # requirements & gathering
+    # requirements and gathering
     requirement_root
-    requirement_internet
-    gather_information_distro
+    compare_version
 
-    # gather configuration settings from user if serverbot.conf is absent, otherwise use serverbot.conf
-    if [ -f /etc/serverbot/serverbot.conf ]; then
-        source /etc/serverbot/serverbot.conf
-
-        # notify user that all configuration steps will be skipped
-        echo "[i] Info: existing configuration found, skipping creation..."
-        echo "[i] Info: skipping gathering tokens..."
-        echo "[i] Info: skipping gathering chat IDs..."
-        echo "[i] Info: skipping adding configuration file..."
-        echo "[i] Info: skipping adding tokens and IDs to configuration..."
-        echo "[i] Info: skipping adding cronjobs to system..."
+    if [ "${NEW_VERSION_AVAILABLE}" == '1' ]; then
+        # create temporary file for self-upgrade
+        TMP_INSTALL="$(mktemp)"
+        # download most recent version of serverbot
+        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        # set permissions on installation script
+        chmod 700 "${TMP_INSTALL}"
+        # executing installation script
+        /bin/bash "${TMP_INSTALL}" --self-upgrade
     else
-        echo "[i] Info: no existing configuration found, installing serverbot..."
-
-        # update os
-        echo "[+] Installing dependencies..."
-        update_os
-
-        # install dependencies on modern rhel based distributions
-        if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
-            dnf -y -q install wget bc
-        # install dependencies on older rhel based distributions
-        elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-            yum -y -q install wget bc
-        # install dependencies on debian based distributions
-        elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-            apt-get -y -qq install aptitude bc curl gawk
-        # install dependencies on alpine based distributions
-        elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
-            apk add # not sure about the rest
-        fi
-
-        # optionally configure method telegram
-        while true
-            do
-                read -r -p '[?] Configure method Telegram? (yes/no): ' TELEGRAM_CONFIGURE
-                [ "${TELEGRAM_CONFIGURE}" = "yes" ] || [ "${TELEGRAM_CONFIGURE}" = "no" ] && break
-                error_type_yes_or_no
-            done
-
-        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-            read -r -p '[?] Enter telegram bot token: ' TELEGRAM_TOKEN
-            read -r -p '[?] Enter telegram chat ID:   ' TELEGRAM_CHAT_ID
-        fi
-
-        # add serverbot configuration file to /etc/serverbot
-        echo "[+] Adding folders to system..."
-        mkdir -m 755 /etc/serverbot
-        echo "[+] Adding configuration file to system..."
-        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
-        chmod 640 /etc/serverbot/serverbot.conf
-
-        # use current major version in /etc/serverbot/serverbot.conf
-        echo "[+] Adding default config parameters to configuration file..."
-        sed -i s%'major_version_here'%"$(echo ${VERSION} | cut -c1)"%g /etc/serverbot/serverbot.conf
-
-
-        # add Telegram access token and chat ID
-        if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-            echo "[+] Adding access token and chat ID to bots..."
-            sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
-            sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
-        fi
+        # exit when no updates are available
+        exit 0
     fi
+}
 
-    # install latest version serverbot
-    echo "[+] Installing latest version of serverbot..."
+function serverbot_self_upgrade
+    # download most recent version and add permissions
     wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
     chmod 755 /usr/local/bin/serverbot
-
-    # creating or updating cronjobs
-    /bin/bash /usr/local/bin/serverbot --cron
-
-    # some information for the user
-    echo
-    echo "Serverbot has now been installed on the system."
-    echo "Configure Serverbot by editting /etc/serverbot/serverbot.conf."
-    echo "Use 'serverbot --help' to see a list of commands."
-    echo
+    echo "[i] Serverbot updated to version ${SERVERBOT_VERSION}..."
+    exit 0
 }
 
 function serverbot_uninstall {
@@ -676,11 +627,6 @@ function update_os {
     elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         apk # not sure about the rest
     fi
-}
-
-function check_version {
-    # make comparison of serverbot versions
-    echo "$@" | gawk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }';
 }
 
 #############################################################################
@@ -1008,6 +954,8 @@ function serverbot_main {
         serverbot_upgrade
     elif [ "${ARGUMENT_SILENT_UPGRADE}" == '1' ]; then
         serverbot_upgrade
+    elif [ "${ARGUMENT_SELF_UPGRADE}" == '1' ]; then
+        serverbot_self_upgrade
     elif [ "${ARGUMENT_UNINSTALL}" == '1' ]; then
         serverbot_uninstall
     # feature overview; method cli
