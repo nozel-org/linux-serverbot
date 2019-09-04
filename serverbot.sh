@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.25.2-BETA (04-09-2019)
+# Version 0.25.3-BETA (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.25.2'
+SERVERBOT_VERSION='0.25.3'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -206,7 +206,7 @@ function error_no_feature_and_method {
 function error_options_cannot_be_combined {
     echo 'serverbot: options cannot be used with features or methods'
     echo "Use 'serverbot --help' for a list of valid arguments."
-    exit 1    
+    exit 1
 }
 
 function error_no_root_privileges {
@@ -229,8 +229,13 @@ function error_type_yes_or_no {
 #############################################################################
 
 function requirement_argument_validity {
+    # features require methods and vice versa
+    if [ "${ARGUMENT_FEATURE}" == '1' ] && [ "${ARGUMENT_METHOD}" == '0' ]; then
+        error_no_feature_and_method
+    elif [ "${ARGUMENT_FEATURE}" == '0' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
+        error_no_feature_and_method
     # amount of arguments less than one or more than two result in error
-    if [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
+    elif [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
         error_wrong_amount_of_arguments
     # options are incompatible with features
     elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_FEATURE}" == '1' ]; then
@@ -238,14 +243,6 @@ function requirement_argument_validity {
     # options are incompatible with methods
     elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
         error_options_cannot_be_combined
-    # if there are two arguments, only a combination of feature and method is possible
-    elif [ "${ARGUMENTS}" -eq '2' ]; then
-        # features require methods and vice versa, so they should add to two.
-        ARGUMENT_FEATURE_AND_METHOD="$((ARGUMENT_FEATURE + ARGUMENT_METHOD))"
-        # and otherwise result in an error
-        if [ "${ARGUMENT_FEATURE_AND_METHOD}" -ne '2' ]; then
-            error_no_feature_and_method
-        fi
     fi
 }
 
