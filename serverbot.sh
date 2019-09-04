@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.0.0-RELEASE (04-09-2019)
+# Version 1.0.1-RELEASE (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.0.0'
+SERVERBOT_VERSION='1.0.1'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -513,7 +513,7 @@ function serverbot_install {
 
     # use current major version in /etc/serverbot/serverbot.conf
     echo "[+] Adding default config parameters to configuration file..."
-    sed -i s%'major_version_here'%"$(echo "${VERSION}" | cut -c1)"%g /etc/serverbot/serverbot.conf
+    sed -i s%'major_version_here'%"$(echo "${SERVERBOT_VERSION}" | cut -c1)"%g /etc/serverbot/serverbot.conf
 
     # add telegram access token and chat id
     if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
