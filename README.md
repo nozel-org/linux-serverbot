@@ -1,5 +1,5 @@
 # Serverbot
-Serverbot is a simple and small (<50 kilobytes/~1000 LOC) server monitoring tool that is easy to use. We found most monitoring software to be overkill for our needs and made a simplistic and lightweight alternative. It's well commented and can be easily extended or hacked to provide more features.
+Serverbot is a simple and small (<50 kilobytes/~1000 LOC) server monitoring tool that is both easy to use and easy to extend. We found most monitoring software to be overkill for our needs and made a simplistic and lightweight alternative. It's well commented and can be easily extended or hacked to provide more features.
 
 It offers the following features:
 
@@ -52,25 +52,15 @@ Options:
 For information on how to aquire a Telegram bot, look at [Telegram's documentation](https://core.telegram.org/bots).
 
 # Compatibility
-We try to support a wide range of linux distributions. As of now, support includes most distro's that use apt-get, yum or dnf. This includes at least the following distributions (which are tested):
+We try to support a wide range of linux distributions. As of now, support includes most distro's that use apt-get, yum or dnf and systemd. This includes at least the following distributions (which are tested):
 
-| RHEL family | Debian family | Other |
-| ----------- | -------- | ------- |
-| CentOS Linux 7 | Debian GNU/Linux 8 (jessie) | |
-| CentOS Linux 8 | Debian GNU/Linux 9 (stretch) | |
-| Fedora 27 | Debian GNU/Linux 10 (buster) | |
-| Fedora 28 | Ubuntu 14.04 LTS (Trusty Tahr) | |
-| Fedora 29 | Ubuntu 14.10 (Utopic Unicorn) | |
-| Fedora 30 | Ubuntu 15.04 (Vivid Vervet) | |
-| Fedora 31 | Ubuntu 15.10 (Wily Werewolf) | |
-| | Ubuntu 16.04 LTS (Xenial Xerus) | | | | | |
-| | Ubuntu 16.10 (Yakkety Yak) | |
-| | Ubuntu 17.04 (Zesty Zapus) | |
-| | Ubuntu 17.10 (Artful Aardvark) | |
-| | Ubuntu 18.04 LTS (Bionic Beaver) | |
-| | Ubuntu 18.10 (Cosmic Cuttlefish) | |
-| | Ubuntu 19.04 (Disco Dingo) | |
-| | Ubuntu 19.10 LTS (Eoan Ermine) | |
+| Distro name | Compatible releases |
+| ----------- | ------------------- |
+| Debian GNU/Linux | 8 (jessie), 9 (stretch), 10 (buster) |
+| Ubuntu | 14.04 LTS (Trusty Tahr), 14.10 (Utopic Unicorn), 15.04 (Vivid Vervet), 15.10 (Wily Werewolf), 16.04 LTS (Xenial Xerus), 16.10 (Yakkety Yak), 17.04 (Zesty Zapus), 17.10 (Artful Aardvark), 18.04 LTS (Bionic Beaver), 18.10 (Cosmic Cuttlefish), 19.04 (Disco Dingo), 19.10 LTS (Eoan Ermine) |
+| RHEL | 7, 8 |
+| CentOS | 7, 8 |
+| Fedora | 27, 28, 29, 30, 31 |
 
 # Future plans
 Ideas and plans for future features are:
