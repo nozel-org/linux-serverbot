@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.24-BETA (04-09-2019)
+# Version 0.25-BETA (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.24'
+SERVERBOT_VERSION='0.25'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -477,16 +477,16 @@ function serverbot_install {
 
     # install dependencies on modern rhel based distributions
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
-        dnf -y -q install wget bc
+        dnf install wget bc --assumeyes --quiet
     # install dependencies on older rhel based distributions
     elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-        yum -y -q install wget bc
+        yum install wget bc --assumeyes --quiet
     # install dependencies on debian based distributions
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-        apt-get -y -qq install aptitude bc curl
+        apt-get install aptitude bc curl --assume-yes --quiet
     # install dependencies on alpine based distributions
     elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
-        apk add # not sure about the rest
+        #apk add # not sure about the rest
     fi
 
     # optionally configure method telegram
@@ -507,11 +507,11 @@ function serverbot_install {
     mkdir -m 755 /etc/serverbot
     # install latest version serverbot and add permissions
     echo "[+] Installing latest version of serverbot..."
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
     chmod 755 /usr/bin/serverbot
     # add serverbot configuration file to /etc/serverbot and add permissions
     echo "[+] Adding configuration file to system..."
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
     chmod 640 /etc/serverbot/serverbot.conf
 
     # use current major version in /etc/serverbot/serverbot.conf
@@ -532,7 +532,7 @@ function serverbot_install {
 
 function compare_version {
     # source version information from github and remove dots
-    source <(curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
+    source <(curl --silent https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
     SERVERBOT_VERSION_CURRENT_NUMBER="$(echo "${SERVERBOT_VERSION}" | tr -d '.')"
     SERVERBOT_VERSION_RELEASE_NUMBER="$(echo "${VERSION_SERVERBOT_RELEASE}" | tr -d '.')"
 
@@ -553,7 +553,7 @@ function serverbot_upgrade {
         echo "[i] Create temporary file for self-upgrade..."
         TMP_INSTALL="$(mktemp)"
         echo "[i] Download most recent version of serverbot..."
-        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
         echo "[i] Set permissions on installation script..."
         chmod 700 "${TMP_INSTALL}"
         echo "[i] Executing installation script..."
@@ -573,7 +573,7 @@ function serverbot_silent_upgrade {
         # create temporary file for self-upgrade
         TMP_INSTALL="$(mktemp)"
         # download most recent version of serverbot
-        wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
         # set permissions on installation script
         chmod 700 "${TMP_INSTALL}"
         # executing installation script
@@ -589,7 +589,7 @@ function serverbot_self_upgrade {
     requirement_root
 
     # download most recent version and add permissions
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
     chmod 755 /usr/bin/serverbot
     echo "[i] Serverbot updated to version ${SERVERBOT_VERSION}..."
     exit 0
@@ -636,16 +636,16 @@ function update_os {
 
     # update modern rhel based distributions
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
-        dnf -y -q update
+        dnf update --assumeyes --quiet
     # update older rhel based distributions
     elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
-        yum -y -q update
+        yum update --assumeyes --quiet
     # update debian based distributions
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
-        apt-get -qq update && apt-get -y -qq upgrade
+        apt-get update --quiet && apt-get upgrade --assume-yes --quiet
     # update alpine based distributions
     elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
-        apk # not sure about the rest
+        #apk # not sure about the rest
     fi
 }
 
@@ -677,7 +677,7 @@ function gather_information_network {
     INTERNAL_IP_ADDRESS="$(hostname -I)"
 
     # external IP address information
-    EXTERNAL_IP_ADDRESS="$(curl -s ipecho.net/plain)"
+    EXTERNAL_IP_ADDRESS="$(curl --silent ipecho.net/plain)"
 }
 
 function gather_metrics_cpu {
@@ -751,7 +751,7 @@ function gather_updates {
     # gather updates on debian based distributions
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         # update repository
-        apt-get -qq update
+        apt-get --quiet update
         # list with available updates to variable AVAILABLE_UPDATES
         AVAILABLE_UPDATES="$(aptitude -F "%p" search '~U')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
@@ -944,7 +944,7 @@ function method_telegram {
     TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
 
     # sent payload to Telegram API and exit
-    curl -s --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
+    curl --silent --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
 }
 
 function method_email {
