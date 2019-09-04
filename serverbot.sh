@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.25-BETA (04-09-2019)
+# Version 0.25.1-BETA (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.25'
+SERVERBOT_VERSION='0.25.1'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -268,8 +268,8 @@ function requirement_os {
     elif [ "$(command -v apt-get)" ]; then
         PACKAGE_MANAGER='apt-get'
     # alpine based distributions
-    elif [ "$(command -v apk)" ]; then
-        PACKAGE_MANAGER='apk'
+    #elif [ "$(command -v apk)" ]; then
+        #PACKAGE_MANAGER='apk'
     else
         error_os_not_supported
     fi
@@ -485,7 +485,7 @@ function serverbot_install {
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         apt-get install aptitude bc curl --assume-yes --quiet
     # install dependencies on alpine based distributions
-    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+    #elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         #apk add # not sure about the rest
     fi
 
@@ -644,7 +644,7 @@ function update_os {
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         apt-get update --quiet && apt-get upgrade --assume-yes --quiet
     # update alpine based distributions
-    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+    #elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         #apk # not sure about the rest
     fi
 }
@@ -757,8 +757,8 @@ function gather_updates {
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
         LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
     # gather updates on alpine based distributions
-    elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
-        apk # not sure
+    #elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
+        #apk # not sure
     fi
 }
 
