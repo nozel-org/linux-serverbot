@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.23-ALPHA (30-06-2019)
+# Version 0.24-BETA (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.23'
+SERVERBOT_VERSION='0.24'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -176,8 +176,8 @@ function error_invalid_option {
     exit 1
 }
 
-function error_wrong_number_of_arguments {
-    echo 'serverbot: wrong number of arguments'
+function error_wrong_amount_of_arguments {
+    echo 'serverbot: wrong amount of arguments'
     echo "Use 'serverbot --help' for a list of valid arguments."
     exit 1
 }
@@ -231,7 +231,7 @@ function error_type_yes_or_no {
 function requirement_argument_validity {
     # amount of arguments less than one or more than two result in error
     if [ "${ARGUMENTS}" -eq '0' ] || [ "${ARGUMENTS}" -gt '2' ]; then
-        error_wrong_number_of_arguments
+        error_wrong_amount_of_arguments
     # options are incompatible with features
     elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_FEATURE}" == '1' ]; then
         error_options_cannot_be_combined
@@ -273,7 +273,7 @@ function requirement_os {
     else
         error_os_not_supported
     fi
-    
+
     # check whether supported service manager is installed and populate relevant variables
     # systemctl
     if [ "$(command -v systemctl)" ]; then
@@ -286,7 +286,7 @@ function requirement_os {
         SERVICE_MANAGER='openrc'
     else
         error_os_not_supported
-    fi    
+    fi
 }
 
 function requirement_internet {
@@ -303,17 +303,14 @@ function requirement_internet {
 #############################################################################
 
 function serverbot_version {
-    echo
     echo "Serverbot ${SERVERBOT_VERSION}"
     echo "Copyright (C) 2016-2019 Nozel."
     echo "License CC Attribution-NonCommercial-ShareAlike 4.0 Int."
     echo
     echo "Written by Sebas Veeke"
-    echo
 }
 
 function serverbot_help {
-    echo
     echo "Usage:"
     echo " serverbot [feature]... [method]..."
     echo " serverbot [option]..."
@@ -338,7 +335,6 @@ function serverbot_help {
     echo " --uninstall          Uninstalls serverbot from the system"
     echo " --help               Display this help and exit"
     echo " --version            Display version information and exit"
-    echo
 }
 
 function serverbot_cron {
@@ -357,61 +353,61 @@ function serverbot_cron {
     # update cronjob for serverbot upgrade if enabled
     if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated upgrade of serverbot...'
-        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVER_UPGRADE_CRON} root /usr/local/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
+        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVER_UPGRADE_CRON} root /usr/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
     fi
     # update overview cronjob if enabled
     if [ "${OVERVIEW_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server overviews on Telegram...'
-        echo -e "# This cronjob activates automated server overview on Telegram on the chosen schedule\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
+        echo -e "# This cronjob activates automated server overview on Telegram on the chosen schedule\n${OVERVIEW_CRON} root /usr/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
     fi
     #if [ "${OVERVIEW_EMAIL}" == 'yes' ]; then
     #    echo '[+] Updating cronjob for automated server overviews on email...'
-    #    echo -e "# This cronjob activates automated server overview on email on the chosen schedule\n${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
+    #    echo -e "# This cronjob activates automated server overview on email on the chosen schedule\n${OVERVIEW_CRON} root /usr/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
     #fi
     # update metrics cronjob if enabled
     if [ "${METRICS_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server metrics on Telegram...'
-        echo -e "# This cronjob activates automated server metrics on Telegram on the chosen schedule\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
+        echo -e "# This cronjob activates automated server metrics on Telegram on the chosen schedule\n${METRICS_CRON} root /usr/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
     fi
     #if [ "${METRICS_EMAIL}" == 'yes' ]; then
     #    echo '[+] Updating cronjob for automated server metrics on email...'
-    #    echo -e "# This cronjob activates automated server metrics on email on the chosen schedule\n${METRICS_CRON} root /usr/local/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
+    #    echo -e "# This cronjob activates automated server metrics on email on the chosen schedule\n${METRICS_CRON} root /usr/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
     #fi
     # update alert cronjob if enabled
     if [ "${ALERT_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server health alerts on Telegram...'
-        echo -e "# This cronjob activates automated server health alerts on Telegram on the chosen schedule\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
+        echo -e "# This cronjob activates automated server health alerts on Telegram on the chosen schedule\n${ALERT_CRON} root /usr/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
     fi
     #if [ "${ALERT_EMAIL}" == 'yes' ]; then
     #    echo '[+] Updating cronjob for automated server health alerts on email...'
-    #    echo -e "# This cronjob activates automated server health alerts alert on email on the chosen schedule\n${ALERT_CRON} root /usr/local/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
+    #    echo -e "# This cronjob activates automated server health alerts alert on email on the chosen schedule\n${ALERT_CRON} root /usr/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
     #fi
     # update updates cronjob if enabled
     if [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated update overviews on Telegram...'
-        echo -e "# This cronjob activates automated update overviews on Telegram on the the chosen schedule\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
+        echo -e "# This cronjob activates automated update overviews on Telegram on the the chosen schedule\n${UPDATES_CRON} root /usr/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
     fi
     #if [ "${UPDATES_EMAIL}" == 'yes' ]; then
     #    echo '[+] Updating cronjob for automated update overviews on email...'
-    #    echo -e "# This cronjob activates automated update overviews on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/local/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
+    #    echo -e "# This cronjob activates automated update overviews on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
     #fi
     # update login cronjob if enabled
     if [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated login notifications on Telegram...'
-        echo -e "# This cronjob activates automated login notifications on Telegram on the the chosen schedule\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
+        echo -e "# This cronjob activates automated login notifications on Telegram on the the chosen schedule\n${LOGIN_CRON} root /usr/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
     fi
     #if [ "${LOGIN_EMAIL}" == 'yes' ]; then
     #    echo '[+] Updating cronjob for automated login notifications on email...'
-    #    echo -e "# This cronjob activates automated login notifications on email on the the chosen schedule\n${LOGIN_CRON} root /usr/local/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
+    #    echo -e "# This cronjob activates automated login notifications on email on the the chosen schedule\n${LOGIN_CRON} root /usr/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
     #fi
     # update outage cronjob if enabled
     #if [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
     #    echo '[+] Updating cronjob for outage notifications on Telegram...'
-    #    echo -e "# This cronjob activates outage notifications on Telegram on the the chosen schedule\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
+    #    echo -e "# This cronjob activates outage notifications on Telegram on the the chosen schedule\n${OUTAGE_CRON} root /usr/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
     #fi
     #if [ "$OUTAGE_EMAIL" == 'yes' ]; then
     #    echo '[+] Updating cronjob for outage notifications on email...'
-    #    echo -e "# This cronjob activates outage notifications on email on the the chosen schedule\n${OUTAGE_CRON} root /usr/local/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
+    #    echo -e "# This cronjob activates outage notifications on email on the the chosen schedule\n${OUTAGE_CRON} root /usr/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
     #fi
 
     # give user feedback when all automated tasks are disabled
@@ -511,8 +507,8 @@ function serverbot_install {
     mkdir -m 755 /etc/serverbot
     # install latest version serverbot and add permissions
     echo "[+] Installing latest version of serverbot..."
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
-    chmod 755 /usr/local/bin/serverbot
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    chmod 755 /usr/bin/serverbot
     # add serverbot configuration file to /etc/serverbot and add permissions
     echo "[+] Adding configuration file to system..."
     wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
@@ -531,7 +527,7 @@ function serverbot_install {
 
     # creating or updating cronjobs
     echo "[+] Creating cronjobs..."
-    /bin/bash /usr/local/bin/serverbot --cron
+    /bin/bash /usr/bin/serverbot --cron
 }
 
 function compare_version {
@@ -593,8 +589,8 @@ function serverbot_self_upgrade {
     requirement_root
 
     # download most recent version and add permissions
-    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/local/bin/serverbot
-    chmod 755 /usr/local/bin/serverbot
+    wget -q https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    chmod 755 /usr/bin/serverbot
     echo "[i] Serverbot updated to version ${SERVERBOT_VERSION}..."
     exit 0
 }
@@ -624,7 +620,7 @@ function serverbot_uninstall {
             echo "[-] Removing serverbot.conf from system..."
             rm -rf /etc/serverbot
             echo "[-] Removing serverbot from system..."
-            rm -f /usr/local/bin/serverbot
+            rm -f /usr/bin/serverbot
             exit 0
         fi
 }
@@ -772,8 +768,7 @@ function gather_updates {
 
 function feature_overview_cli {
     # output server overview to shell
-    echo
-    echo '# SYSTEM #'
+    echo "SYSTEM"
     echo "HOST:         ${HOSTNAME}"
     echo "OS:           ${OPERATING_SYSTEM}"
     echo "DISTRO:       ${DISTRO} ${DISTRO_VERSION}"
@@ -781,17 +776,16 @@ function feature_overview_cli {
     echo "ARCHITECTURE: ${ARCHITECTURE}"
     echo "UPTIME:       ${UPTIME}"
     echo
-    echo '# INTERNAL IP:'
+    echo 'INTERNAL IP:'
     printf '%s\n'       ${INTERNAL_IP_ADDRESS}
     echo
-    echo "# EXTERNAL IP:"
+    echo "EXTERNAL IP:"
     echo "${EXTERNAL_IP_ADDRESS}"
     echo
-    echo '# HEALTH #'
+    echo 'HEALTH'
     echo "LOAD:         ${COMPLETE_LOAD}"
     echo "MEMORY:       ${USED_MEMORY}M / ${TOTAL_MEMORY}M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)"
     echo "DISK:         ${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)"
-    echo
 
     # exit when done
     exit 0
@@ -810,7 +804,6 @@ function feature_overview_telegram {
 
 function feature_metrics_cli {
     # output server metrics to shell
-    echo
     echo "HOST:     ${HOSTNAME}"
     echo "UPTIME:   ${UPTIME}"
     echo "LOAD:     ${COMPLETE_LOAD}"
@@ -834,7 +827,6 @@ function feature_metrics_telegram {
 
 function feature_alert_cli {
     # check whether the current server load exceeds the threshold and alert if true. Output server alert status to shell.
-    echo
     if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
     else
@@ -890,7 +882,6 @@ function feature_alert_telegram {
 }
 
 function feature_updates_cli {
-    echo
     # notify user when there are no updates
     if [ -z "${AVAILABLE_UPDATES}" ]; then
         echo
