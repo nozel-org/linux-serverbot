@@ -20,10 +20,19 @@ Aside from features, there are also different methods that can be used with the 
 Some examples from both Telegram and CLI:
 ![alt text](https://raw.githubusercontent.com/nozel-org/serverbot/master/overview.jpg "feature examples")
 
-# How to use serverbot
-Easy! Download [`serverbot.sh`](https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh) to your device and run it (`bash serverbot.sh --install`) to install. After installing serverbot you can just run `serverbot` as a normal command. For example `serverbot --metrics --cli` or the shorter notation `serverbot -m -c`. Parameters like automated tasks and thresholds can be configured from a central configuration file in `/etc/serverbot/serverbot.conf`.
+# How to install serverbot
+Easy! But before you download stuff from the internet, always check it's source code. Never trust random people on the internet ;-). To install, download [`serverbot.sh`](https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh) to your device and run `bash serverbot.sh --install` to install.
 
-`serverbot --help` provides an easy overview of arguments:
+If you are particularly gullible or like living on the edge, you can also skip checking the source code and use one of the following one-liners:
+```
+wget -O - https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh | sudo bash
+curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh | sudo bash
+```
+
+# How to use serverbot
+After installing serverbot you can run `serverbot` as a normal command. For example `serverbot --metrics --cli` or the shorter notation `serverbot -m -c`. Parameters like automated tasks and thresholds can be configured from a central configuration file in `/etc/serverbot/serverbot.conf`.
+
+`serverbot --help` provides a handy overview of arguments:
 ```
 root@server:~# serverbot --help
 Usage:
@@ -52,29 +61,37 @@ Options:
 For information on how to aquire a Telegram bot, look at [Telegram's documentation](https://core.telegram.org/bots).
 
 # Compatibility
-We try to support a wide range of linux distributions. As of now, support includes most distro's that use apt-get, yum or dnf and systemd. This includes at least the following distributions (which are tested):
+We try to support a wide range of linux distributions. As of now, support includes most distros that use apt-get, yum or dnf and systemd. This should include at least the following distributions (which have been tested during developement):
 
 | Distro name | Compatible releases |
 | ----------- | ------------------- |
-| Debian GNU/Linux | 8 (jessie), 9 (stretch), 10 (buster) |
-| Ubuntu | 14.04 LTS (Trusty Tahr), 14.10 (Utopic Unicorn), 15.04 (Vivid Vervet), 15.10 (Wily Werewolf), 16.04 LTS (Xenial Xerus), 16.10 (Yakkety Yak), 17.04 (Zesty Zapus), 17.10 (Artful Aardvark), 18.04 LTS (Bionic Beaver), 18.10 (Cosmic Cuttlefish), 19.04 (Disco Dingo), 19.10 LTS (Eoan Ermine) |
+| Debian GNU/Linux | 8, 9, 10 |
+| Ubuntu | 14.04 LTS, 14.10, 15.04, 15.10, 16.04 LTS, 16.10, 17.04, 17.10, 18.04 LTS, 18.10, 19.04, 19.10 LTS |
 | RHEL | 7, 8 |
 | CentOS | 7, 8 |
 | Fedora | 27, 28, 29, 30, 31 |
 
 # Future plans
-Ideas and plans for future features are:
+Ideas for future additions are:
 
 * Extend feature alert with SSD life expectancy.
 * Extend feature alert or add feature login with realtime logins and currently logged in users.
 * Extend feature alert with filesystem monitoring.
 * Extend feature alert with CPU / HDD temperature monitoring.
 * Extend feature alert with USB device monitoring.
+* Extend feature alert with port scan capabilities.
+* Extend feature alert with DNS record capabilities.
+* Extend feature alert with notice on shutdown and boot.
+* Extend feature alert with Let's Encrypt certificate expiry warning.
+* Extend feature alert with EOL notice of used operating system.
+* Extend feature overview with total network traffic amount.
 * Extend feature overview with logged in users.
 * Add method email.
 * Add feature EOL which notifies the user whenever the OS is nearing EOL status.
 * Add feature outage which monitors the availability of other remote systems and reports the status.
 * Add support for Alpine Linux.
 * Add support for NixOS.
+* Add support for FreeBSD.
+* Add support for OpenBSD.
 
 New ideas are welcome!
