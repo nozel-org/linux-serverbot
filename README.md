@@ -20,16 +20,16 @@ Aside from features, there are also different methods that can be used with the 
 Some examples from both Telegram and CLI:
 ![alt text](https://raw.githubusercontent.com/nozel-org/serverbot/master/overview.jpg "feature examples")
 
-# How to install serverbot
-Easy! But before you download stuff from the internet, always check it's source code. Never trust random people on the internet ;-). To install, download [`serverbot.sh`](https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh) to your device and run `bash serverbot.sh --install` to install.
+# Install serverbot
+Easy! But before you download software, always check its source code and/or credibility. Never trust random people on the internet ;-). If you are particularly gullible or like living on the edge, you can also skip checking the source code of course. To install, download [`serverbot.sh`](https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh) to your device and run `bash serverbot.sh --install` to install.
 
-If you are particularly gullible or like living on the edge, you can also skip checking the source code and use one of the following one-liners:
+Some common methods of downloading the file would be:
 ```
-wget -O - https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh | sudo bash
-curl -s https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh | sudo bash
+wget https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh
+curl -O https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh
 ```
 
-# How to use serverbot
+# Use serverbot
 After installing serverbot you can run `serverbot` as a normal command. For example `serverbot --metrics --cli` or the shorter notation `serverbot -m -c`. Parameters like automated tasks and thresholds can be configured from a central configuration file in `/etc/serverbot/serverbot.conf`.
 
 `serverbot --help` provides a handy overview of arguments:
