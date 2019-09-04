@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 0.25.1-BETA (04-09-2019)
+# Version 0.25.2-BETA (04-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.25.1'
+SERVERBOT_VERSION='0.25.2'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -512,7 +512,7 @@ function serverbot_install {
     # add serverbot configuration file to /etc/serverbot and add permissions
     echo "[+] Adding configuration file to system..."
     wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
-    chmod 640 /etc/serverbot/serverbot.conf
+    chmod 644 /etc/serverbot/serverbot.conf
 
     # use current major version in /etc/serverbot/serverbot.conf
     echo "[+] Adding default config parameters to configuration file..."
