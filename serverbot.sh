@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.0.2-RELEASE (07-09-2019)
+# Version 1.0.3-RELEASE (07-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.0.2'
+SERVERBOT_VERSION='1.0.3'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -350,7 +350,7 @@ function serverbot_cron {
     # update cronjob for serverbot upgrade if enabled
     if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated upgrade of serverbot...'
-        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVER_UPGRADE_CRON} root /usr/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
+        echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVERBOT_UPGRADE_CRON} root /usr/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
     fi
     # update overview cronjob if enabled
     if [ "${OVERVIEW_TELEGRAM}" == 'yes' ]; then
