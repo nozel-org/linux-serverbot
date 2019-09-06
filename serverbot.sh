@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.0.1-RELEASE (04-09-2019)
+# Version 1.0.2-RELEASE (07-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.0.1'
+SERVERBOT_VERSION='1.0.2'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -904,7 +904,7 @@ function feature_updates_telegram {
     else
         # if update list length is less than 4000 characters, then sent update list
         if [ "${LENGTH_UPDATES}" -lt "4000" ]; then
-            TELEGRAM_MESSAGE="There are updates available on <b>${HOSTNAME}</b>:\n\n${AVAILABLE_UPDATES}"
+            TELEGRAM_MESSAGE="$(echo -e "There are updates available on <b>${HOSTNAME}</b>:\n\n${AVAILABLE_UPDATES}")"
         fi
 
         # if update list length is greater than 4000 characters, don't sent update list
