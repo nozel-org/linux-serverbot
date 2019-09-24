@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.0.3-RELEASE (07-09-2019)
+# Version 1.1.0-STABLE (24-09-2019)
 #############################################################################
 
 #############################################################################
@@ -20,22 +20,28 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.0.3'
+SERVERBOT_VERSION='1.1.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
     source /etc/serverbot/serverbot.conf
+    # check whether method telegram has been configured
+    if [ "${TELEGRAM_TOKEN}" == 'telegram_token_here' ]; then
+        METHOD_TELEGRAM='disabled'
+    fi
 else
     # otherwise disable these options, features and methods
-    OPTION_CRON='disabled' # won't work without serverbot.conf
-    FEATURE_OUTAGE='disabled' # work in progress
+    SERVERBOT_CONFIG='disabled' # won't work without serverbot.conf
     METHOD_TELEGRAM='disabled' # won't work without serverbot.conf
     METHOD_EMAIL='disabled' # won't work without serverbot.conf
 
-    # and use these default values for the alert threshold
+    # and use these default values for the alert threshold parameters
     THRESHOLD_LOAD='90%'
     THRESHOLD_MEMORY='80%'
     THRESHOLD_DISK='80%'
+
+    # and default to stable branch
+    SERVERBOT_BRANCH='unstable'
 fi
 
 #############################################################################
@@ -54,7 +60,7 @@ ARGUMENT_METHOD='0'
 while test -n "$1"; do
     case "$1" in
         # options
-        --version)
+        --version|-version|version|--v|-v)
             ARGUMENT_VERSION='1'
             ARGUMENT_OPTION='1'
             shift
@@ -69,6 +75,12 @@ while test -n "$1"; do
         --cron)
             ARGUMENT_CRON='1'
             ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        --validate)
+            ARGUMENT_VALIDATE='1'
+            ARGUMENT_OPTIONS='1'
             shift
             ;;
 
@@ -103,56 +115,50 @@ while test -n "$1"; do
             ;;
 
         # features
-        --overview|overview|-o)
+        --overview|overview)
             ARGUMENT_OVERVIEW='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --metrics|metrics|-m)
+        --metrics|metrics)
             ARGUMENT_METRICS='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --alert|alert|-a)
+        --alert|alert)
             ARGUMENT_ALERT='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --updates|updates|-u)
+        --updates|updates)
             ARGUMENT_UPDATES='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        #--logins|logins|-l)
-        #    ARGUMENT_LOGINS='1'
-        #    ARGUMENT_FEATURE='1'
-        #    shift
-        #    ;;
-
-        #--outage|outage|-?)
-        #    ARGUMENT_OUTAGE='1'
-        #    ARGUMENT_FEATURE='1'
-        #    shift
-        #    ;;
+        --eol|eol)
+            ARGUMENT_EOL='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
 
         # methods
-        --cli|cli|-c)
+        --cli|cli)
             ARGUMENT_CLI='1'
             ARGUMENT_METHOD='1'
             shift
             ;;
 
-        --telegram|telegram|-t)
+        --telegram|telegram)
             ARGUMENT_TELEGRAM='1'
             ARGUMENT_METHOD='1'
             shift
             ;;
 
-        --email|email|-e)
+        --email|email)
             ARGUMENT_EMAIL='1'
             ARGUMENT_METHOD='1'
             shift
@@ -224,6 +230,16 @@ function error_type_yes_or_no {
     echo "serverbot: type yes or no and press enter to continue."
 }
 
+function error_method_telegram_disabled {
+    echo "serverbot: method telegram is unavailable without correct configuration in serverbot configuration file."
+    exit 1
+}
+
+function error_method_email_disabled {
+    echo "serverbot: method email is unavailable without correct configuration in serverbot configuration file."
+    exit 1
+}
+
 #############################################################################
 # REQUIREMENT FUNCTIONS
 #############################################################################
@@ -243,6 +259,10 @@ function requirement_argument_validity {
     # options are incompatible with methods
     elif [ "${ARGUMENT_OPTION}" == '1' ] && [ "${ARGUMENT_METHOD}" == '1' ]; then
         error_options_cannot_be_combined
+    elif [ "${ARGUMENT_TELEGRAM}" == '1' ] && [ "${METHOD_TELEGRAM}" == 'disabled' ]; then
+        error_method_telegram_disabled
+    elif [ "${ARGUMENT_EMAIL}" == '1' ] && [ "${METHOD_EMAIL}" == 'disabled' ]; then
+        error_method_email_disabled
     fi
 }
 
@@ -255,16 +275,12 @@ function requirement_root {
 
 function requirement_os {
     # check whether supported package manager is installed and populate relevant variables
-    # modern rhel based distributions
     if [ "$(command -v dnf)" ]; then
         PACKAGE_MANAGER='dnf'
-    # old rhel based distributions
     elif [ "$(command -v yum)" ]; then
         PACKAGE_MANAGER='yum'
-    # debian based distributions
     elif [ "$(command -v apt-get)" ]; then
         PACKAGE_MANAGER='apt-get'
-    # alpine based distributions
     #elif [ "$(command -v apk)" ]; then
         #PACKAGE_MANAGER='apk'
     else
@@ -313,33 +329,34 @@ function serverbot_help {
     echo " serverbot [option]..."
     echo
     echo "Features:"
-    echo " -o, --overview        Show server overview"
-    echo " -m, --metrics         Show server metrics"
-    echo " -a, --alert           Show server alert status"
-    echo " -u, --updates         Show available server updates"
-    #echo " -l, --logins          Show logins and logged in users"
-    #echo " -?, --outage          Check list for outage"
+    echo " --overview        Show server overview"
+    echo " --metrics         Show server metrics"
+    echo " --alert           Show server alert status"
+    echo " --updates         Show available server updates"
+    echo " --eol             Show end-of-life status of operating system"
     echo
     echo "Methods:"
-    echo " -c, --cli             Output [feature] to command line"
-    echo " -t, --telegram        Output [feature] to Telegram bot"
-    #echo " -e, --email           Output [feature] to e-mail"
+    echo " --cli             Output [feature] to command line"
+    echo " --telegram        Output [feature] to Telegram bot"
+    #echo "--email           Output [feature] to e-mail"
     echo
     echo "Options:"
-    echo " --cron               Effectuate cron changes from serverbot config"
-    echo " --install            Installs serverbot on the system and unlocks all features"
-    echo " --upgrade            Upgrade serverbot to the latest stable version"
-    echo " --uninstall          Uninstalls serverbot from the system"
-    echo " --help               Display this help and exit"
-    echo " --version            Display version information and exit"
+    echo " --cron            Effectuate cron changes from serverbot config"
+    echo " --validate        Check validity of serverbot.conf"
+    echo " --install         Installs serverbot on the system and unlocks all features"
+    echo " --upgrade         Upgrade serverbot to the latest stable version"
+    echo " --uninstall       Uninstalls serverbot from the system"
+    echo " --help            Display this help and exit"
+    echo " --version         Display version information and exit"
 }
 
 function serverbot_cron {
-    # requirements & gathering
+    # function requirements
     requirement_root
+    serverbot_validate
 
     # return error when config file isn't installed on the system
-    if [ "${OPTION_CRON}" == 'disabled' ]; then
+    if [ "${SERVERBOT_CONFIG}" == 'disabled' ]; then
         error_not_available
     fi
 
@@ -347,12 +364,11 @@ function serverbot_cron {
     # remove cronjobs so automated tasks can also be deactivated
     echo '[-] Removing old serverbot cronjobs...'
     rm -f /etc/cron.d/serverbot_*
-    # update cronjob for serverbot upgrade if enabled
+    # update cronjobs automated tasks
     if [ "${SERVERBOT_UPGRADE}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated upgrade of serverbot...'
         echo -e "# This cronjob activates automatic upgrade of serverbot on the chosen schedule\n${SERVERBOT_UPGRADE_CRON} root /usr/bin/serverbot --silent-upgrade" > /etc/cron.d/serverbot_upgrade
     fi
-    # update overview cronjob if enabled
     if [ "${OVERVIEW_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server overviews on Telegram...'
         echo -e "# This cronjob activates automated server overview on Telegram on the chosen schedule\n${OVERVIEW_CRON} root /usr/bin/serverbot --overview --telegram" > /etc/cron.d/serverbot_overview_telegram
@@ -361,7 +377,6 @@ function serverbot_cron {
     #    echo '[+] Updating cronjob for automated server overviews on email...'
     #    echo -e "# This cronjob activates automated server overview on email on the chosen schedule\n${OVERVIEW_CRON} root /usr/bin/serverbot --overview --email" > /etc/cron.d/serverbot_overview_email
     #fi
-    # update metrics cronjob if enabled
     if [ "${METRICS_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server metrics on Telegram...'
         echo -e "# This cronjob activates automated server metrics on Telegram on the chosen schedule\n${METRICS_CRON} root /usr/bin/serverbot --metrics --telegram" > /etc/cron.d/serverbot_metrics_telegram
@@ -370,7 +385,6 @@ function serverbot_cron {
     #    echo '[+] Updating cronjob for automated server metrics on email...'
     #    echo -e "# This cronjob activates automated server metrics on email on the chosen schedule\n${METRICS_CRON} root /usr/bin/serverbot --metrics --email" > /etc/cron.d/serverbot_metrics_email
     #fi
-    # update alert cronjob if enabled
     if [ "${ALERT_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated server health alerts on Telegram...'
         echo -e "# This cronjob activates automated server health alerts on Telegram on the chosen schedule\n${ALERT_CRON} root /usr/bin/serverbot --alert --telegram" > /etc/cron.d/serverbot_alert_telegram
@@ -379,7 +393,6 @@ function serverbot_cron {
     #    echo '[+] Updating cronjob for automated server health alerts on email...'
     #    echo -e "# This cronjob activates automated server health alerts alert on email on the chosen schedule\n${ALERT_CRON} root /usr/bin/serverbot --alert --email" > /etc/cron.d/serverbot_alert_email   
     #fi
-    # update updates cronjob if enabled
     if [ "${UPDATES_TELEGRAM}" == 'yes' ]; then
         echo '[+] Updating cronjob for automated update overviews on Telegram...'
         echo -e "# This cronjob activates automated update overviews on Telegram on the the chosen schedule\n${UPDATES_CRON} root /usr/bin/serverbot --updates --telegram" > /etc/cron.d/serverbot_updates_telegram
@@ -388,23 +401,13 @@ function serverbot_cron {
     #    echo '[+] Updating cronjob for automated update overviews on email...'
     #    echo -e "# This cronjob activates automated update overviews on email on the the chosen schedule\n\n${UPDATES_CRON} root /usr/bin/serverbot --updates --email" > /etc/cron.d/serverbot_updates_email
     #fi
-    # update login cronjob if enabled
-    if [ "${LOGIN_TELEGRAM}" == 'yes' ]; then
-        echo '[+] Updating cronjob for automated login notifications on Telegram...'
-        echo -e "# This cronjob activates automated login notifications on Telegram on the the chosen schedule\n${LOGIN_CRON} root /usr/bin/serverbot --login --telegram" > /etc/cron.d/serverbot_login_telegram
+    if [ "${EOL_TELEGRAM}" == 'yes' ]; then
+        echo '[+] Updating cronjob for automated EOL warnings on Telegram...'
+        echo -e "# This cronjob activates automated EOL warnings on Telegram on the the chosen schedule\n${CLI_CRON} root /usr/bin/serverbot --eol --telegram" > /etc/cron.d/serverbot_eol_telegram
     fi
-    #if [ "${LOGIN_EMAIL}" == 'yes' ]; then
-    #    echo '[+] Updating cronjob for automated login notifications on email...'
-    #    echo -e "# This cronjob activates automated login notifications on email on the the chosen schedule\n${LOGIN_CRON} root /usr/bin/serverbot --login --email" > /etc/cron.d/serverbot_login_email
-    #fi
-    # update outage cronjob if enabled
-    #if [ "$OUTAGE_TELEGRAM" == 'yes' ]; then
-    #    echo '[+] Updating cronjob for outage notifications on Telegram...'
-    #    echo -e "# This cronjob activates outage notifications on Telegram on the the chosen schedule\n${OUTAGE_CRON} root /usr/bin/serverbot --outage --telegram" > /etc/cron.d/serverbot_outage_telegram
-    #fi
-    #if [ "$OUTAGE_EMAIL" == 'yes' ]; then
-    #    echo '[+] Updating cronjob for outage notifications on email...'
-    #    echo -e "# This cronjob activates outage notifications on email on the the chosen schedule\n${OUTAGE_CRON} root /usr/bin/serverbot --outage --email" > /etc/cron.d/serverbot_outage_email
+    #if [ "${EOL_EMAIL}" == 'yes' ]; then
+    #    echo '[+] Updating cronjob for automated EOL warnings on email...'
+    #    echo -e "# This cronjob activates automated EOL warnings on e-mail on the the chosen schedule\n${CLI_CRON} root /usr/bin/serverbot --eol --email" > /etc/cron.d/serverbot_eol_email
     #fi
 
     # give user feedback when all automated tasks are disabled
@@ -412,7 +415,8 @@ function serverbot_cron {
     [ "${OVERVIEW_TELEGRAM}" != 'yes' ] && \
     [ "${METRICS_TELEGRAM}" != 'yes' ] && \
     [ "${ALERT_TELEGRAM}" != 'yes' ] && \
-    [ "${UPDATES_TELEGRAM}" != 'yes' ]; then
+    [ "${UPDATES_TELEGRAM}" != 'yes' ] && \
+    [ "${EOL_TELEGRAM}" != 'yes' ]; then
         echo '[i] All automated tasks are disabled, no cronjobs to update...'
         exit 0
     fi
@@ -430,8 +434,100 @@ function serverbot_cron {
     #elif [ "${SERVICE_MANAGER}" == "rc-service" ] && [ "${PACKAGE_MANAGER}" == "apk" ]; then
     #    rc-service cron start # not sure if this is correct
     fi
-    echo '[i] Done'
+    echo '[i] Done!'
     exit 0
+}
+
+function serverbot_validate {
+    # function requirements
+    requirement_root
+
+    # return error when config file isn't installed on the system
+    if [ "${SERVERBOT_CONFIG}" == 'disabled' ]; then
+        error_not_available
+    fi
+
+    echo '*** VALIDATING SERVERBOT.CONF ***'
+    # create temporary file for serverbot.conf
+    echo '[+] Creating temporary file from /etc/serverbot/serverbot.conf...'
+    TMP_VALIDATE="$(mktemp)"
+    # remove all content beginning with '#', remove all white space and add to temporary file
+    cat /etc/serverbot/serverbot.conf | cut -f1 -d"#" | sed '/^[[:space:]]*$/d' | tr -d '%' > "${TMP_VALIDATE}"
+    # source temporary file so the variables can be validated
+    source "${TMP_VALIDATE}"
+
+    # validate config file (without cron and method specific config parameters)
+    echo "[i] Note: cron and method configuration parameters will not be validated..."
+    echo '[i] Validating temporary serverbot.conf...'
+    VALIDATION_ERROR='0'
+    if [ ! "${MAJOR_VERSION}" > '0' ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable MAJOR_VERSION should be a number."
+    fi
+    if { [ "${SERVERBOT_UPGRADE}" != 'yes' ] && [ "${SERVERBOT_UPGRADE}" != 'no' ]; } && [ ! -z "${SERVERBOT_UPGRADE}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable SERVERBOT_UPGRADE should be either 'yes' or 'no'."
+    fi
+    if { [ "${SERVERBOT_UPGRADE_TELEGRAM}" != 'yes' ] && [ "${SERVERBOT_UPGRADE_TELEGRAM}" != 'no' ]; } && [ ! -z "${SERVERBOT_UPGRADE_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable SERVERBOT_UPGRADE_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if { [ "${OVERVIEW_TELEGRAM}" != 'yes' ] && [ "${OVERVIEW_TELEGRAM}" != 'no' ]; } && [ ! -z "${OVERVIEW_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable OVERVIEW_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if { [ "${METRICS_TELEGRAM}" != 'yes' ] && [ "${METRICS_TELEGRAM}" != 'no' ]; } && [ ! -z "${METRICS_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable METRICS_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if { [ "${ALERT_TELEGRAM}" != 'yes' ] && [ "${ALERT_TELEGRAM}" != 'no' ]; } && [ ! -z "${ALERT_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable ALERT_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if { [ "${UPDATES_TELEGRAM}" != 'yes' ] && [ "${UPDATES_TELEGRAM}" != 'no' ]; } && [ ! -z "${UPDATES_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable UPDATES_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if { [ "${EOL_TELEGRAM}" != 'yes' ] && [ "${EOL_TELEGRAM}" != 'no' ]; } && [ ! -z "${EOL_TELEGRAM}" ]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable EOL_TELEGRAM should be either 'yes' or 'no'."
+    fi
+    if [[ "$(echo ${THRESHOLD_LOAD} | tr -d '%')" -lt '0' ]] || [[ "$(echo ${THRESHOLD_LOAD} | tr -d '%')" -gt '100' ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_LOAD should be between '0%' and '100%'."
+    fi
+    if [[ ! "$(echo ${THRESHOLD_LOAD} | tr -d '%')" =~ ^[[:digit:]] ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_LOAD should only contain numbers and '%'."
+    fi
+    if [[ "$(echo ${THRESHOLD_MEMORY} | tr -d '%')" -lt '0' ]] || [[ "$(echo ${THRESHOLD_MEMORY} | tr -d '%')" -gt '100' ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_MEMORY should be between '0%' and '100%'."
+    fi
+    if [[ ! "$(echo ${THRESHOLD_MEMORY} | tr -d '%')" =~ ^[[:digit:]] ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_MEMORY should only contain numbers and '%'."
+    fi
+    if [[ "$(echo ${THRESHOLD_DISK} | tr -d '%')" -lt '0' ]] || [[ "$(echo ${THRESHOLD_DISK} | tr -d '%')" -gt '100' ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_DISK should be between '0%' and '100%'."
+    fi
+    if [[ ! "$(echo ${THRESHOLD_DISK} | tr -d '%')" =~ ^[[:digit:]] ]]; then
+        VALIDATION_ERROR='1'
+        echo "[!] Validation error: variable THRESHOLD_DISK should only contain numbers and '%'."
+    fi
+
+    # remove temporary file
+    echo "[-] Removing temporary file..."
+    rm -f "${TMP_VALIDATE}"
+
+    # give feedback to user whether the validation was succesful or not
+    if [ "${VALIDATION_ERROR}" == '1' ]; then
+        echo "[!] Validation errors have been found. Please fix them before trying again..."
+        exit 1
+    else
+        echo "[i] No validation errors have been found..."
+    fi
 }
 
 function serverbot_install_check {
@@ -462,7 +558,7 @@ function serverbot_install_check {
 }
 
 function serverbot_install {
-    # requirements and gathering
+    # function requirements
     requirement_root
     gather_information_distro
 
@@ -472,16 +568,13 @@ function serverbot_install {
     echo "[+] Installing dependencies..."
     update_os
 
-    # install dependencies on modern rhel based distributions
+    # install dependencies for different package managers
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         dnf install wget bc --assumeyes --quiet
-    # install dependencies on older rhel based distributions
     elif [ "${PACKAGE_MANAGER}" == "yum" ]; then
         yum install wget bc --assumeyes --quiet
-    # install dependencies on debian based distributions
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         apt-get install aptitude bc curl --assume-yes --quiet
-    # install dependencies on alpine based distributions
     #elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         #apk add # not sure about the rest
     fi
@@ -504,20 +597,21 @@ function serverbot_install {
     mkdir -m 755 /etc/serverbot
     # install latest version serverbot and add permissions
     echo "[+] Installing latest version of serverbot..."
-    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/serverbot.sh -O /usr/bin/serverbot
     chmod 755 /usr/bin/serverbot
     # add serverbot configuration file to /etc/serverbot and add permissions
     echo "[+] Adding configuration file to system..."
-    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /etc/serverbot/serverbot.conf
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/serverbot.conf -O /etc/serverbot/serverbot.conf
     chmod 644 /etc/serverbot/serverbot.conf
 
     # use current major version in /etc/serverbot/serverbot.conf
     echo "[+] Adding default config parameters to configuration file..."
     sed -i s%'major_version_here'%"$(echo "${SERVERBOT_VERSION}" | cut -c1)"%g /etc/serverbot/serverbot.conf
+    sed -i s%'branch_here'%"$(echo "${SERVERBOT_BRANCH}")"%g /etc/serverbot/serverbot.conf
 
     # add telegram access token and chat id
     if [ "${TELEGRAM_CONFIGURE}" == 'yes' ]; then
-        echo "[+] Adding access token and chat ID to bots..."
+        echo "[+] Adding telegram access token and chat ID to configuration file..."
         sed -i s%'telegram_token_here'%"${TELEGRAM_TOKEN}"%g /etc/serverbot/serverbot.conf
         sed -i s%'telegram_id_here'%"${TELEGRAM_CHAT_ID}"%g /etc/serverbot/serverbot.conf
     fi
@@ -529,9 +623,9 @@ function serverbot_install {
 
 function compare_version {
     # source version information from github and remove dots
-    source <(curl --silent https://raw.githubusercontent.com/nozel-org/serverbot/master/version.txt)
+    source <(curl --silent https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/resources/version.txt)
     SERVERBOT_VERSION_CURRENT_NUMBER="$(echo "${SERVERBOT_VERSION}" | tr -d '.')"
-    SERVERBOT_VERSION_RELEASE_NUMBER="$(echo "${VERSION_SERVERBOT_RELEASE}" | tr -d '.')"
+    SERVERBOT_VERSION_RELEASE_NUMBER="$(echo "${VERSION_SERVERBOT}" | tr -d '.')"
 
     # check whether release version has a higher version number
     if [ "${SERVERBOT_VERSION_RELEASE_NUMBER}" -gt "${SERVERBOT_VERSION_CURRENT_NUMBER}" ]; then
@@ -540,7 +634,7 @@ function compare_version {
 }
 
 function serverbot_upgrade {
-    # requirements and gathering
+    # function requirements
     requirement_root
     compare_version
 
@@ -550,7 +644,7 @@ function serverbot_upgrade {
         echo "[i] Create temporary file for self-upgrade..."
         TMP_INSTALL="$(mktemp)"
         echo "[i] Download most recent version of serverbot..."
-        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/serverbot.sh -O "${TMP_INSTALL}"
         echo "[i] Set permissions on installation script..."
         chmod 700 "${TMP_INSTALL}"
         echo "[i] Executing installation script..."
@@ -562,7 +656,7 @@ function serverbot_upgrade {
 }
 
 function serverbot_silent_upgrade {
-    # requirements and gathering
+    # function requirements
     requirement_root
     compare_version
 
@@ -570,7 +664,7 @@ function serverbot_silent_upgrade {
         # create temporary file for self-upgrade
         TMP_INSTALL="$(mktemp)"
         # download most recent version of serverbot
-        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O "${TMP_INSTALL}"
+        wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/serverbot.sh -O "${TMP_INSTALL}"
         # set permissions on installation script
         chmod 700 "${TMP_INSTALL}"
         # executing installation script
@@ -582,18 +676,29 @@ function serverbot_silent_upgrade {
 }
 
 function serverbot_self_upgrade {
-    # requirements and gathering
+    # function requirements
     requirement_root
 
     # download most recent version and add permissions
-    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.sh -O /usr/bin/serverbot
+    wget --quiet https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/serverbot.sh -O /usr/bin/serverbot
     chmod 755 /usr/bin/serverbot
-    echo "[i] Serverbot updated to version ${SERVERBOT_VERSION}..."
+    echo "[i] Serverbot upgraded to version ${SERVERBOT_VERSION}..."
+
+    # notify on telegram
+    if [ "${SERVERBOT_UPGRADE_TELEGRAM}" == 'yes' ]; then
+        # create message for telegram
+        TELEGRAM_MESSAGE="$(echo -e "<b>Upgrade</b>: <code>${HOSTNAME}</code>\\nServerbot upgraded to version ${SERVERBOT_VERSION}.")"
+
+        # call method_telegram
+        method_telegram
+    fi
+
+    # exit when done
     exit 0
 }
 
 function serverbot_uninstall {
-    # requirements and gathering
+    # function requirements
     requirement_root
 
     # ask whether uninstall was intended
@@ -627,9 +732,8 @@ function serverbot_uninstall {
 #############################################################################
 
 function update_os {
-    # requirements and gathering
+    # function requirements
     requirement_root
-    gather_information_distro
 
     # update modern rhel based distributions
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
@@ -652,10 +756,11 @@ function update_os {
 
 function gather_information_distro {
     # get os information from os-release
-    source /etc/os-release
+    source <(cat /etc/os-release | tr -d '.')
 
-    # put distro name and version in variables
+    # put distro name, id and version in variables
     DISTRO="${NAME}"
+    DISTRO_ID="${ID}"
     DISTRO_VERSION="${VERSION_ID}"
 }
 
@@ -678,7 +783,7 @@ function gather_information_network {
 }
 
 function gather_metrics_cpu {
-    # requirements and gathering
+    # function requirements
     requirement_root
 
     # cpu and load metrics
@@ -729,9 +834,8 @@ function gather_metrics_threshold {
 }
 
 function gather_updates {
-    # requirements and gathering
+    # function requirements
     requirement_root
-    gather_information_distro
 
     # gather updates on modern rhel based distributions
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
@@ -759,11 +863,36 @@ function gather_updates {
     fi
 }
 
+function gather_eol {
+    # function requirements
+    gather_information_distro
+
+    # modify basic distro information to upper case
+    EOL_OS="$(echo ${DISTRO_ID}${DISTRO_VERSION} | tr '[:lower:]' '[:upper:]')"
+    EOL_OS_NAME="EOL_${EOL_OS}"
+
+    # source database with eol data
+    source <(curl --silent https://raw.githubusercontent.com/nozel-org/serverbot/${SERVERBOT_BRANCH}/resources/eol.list | tr -d '.')
+
+    # calculate epoch difference between current date and eol date
+    EPOCH_EOL="$(date --date=$(echo "${!EOL_OS_NAME}") +%s)"
+    EPOCH_CURRENT="$(date +%s)"
+    EPOCH_DIFFERENCE="$(( ${EPOCH_EOL} - ${EPOCH_CURRENT} ))"
+}
+
 #############################################################################
 # FEATURE FUNCTIONS
 #############################################################################
 
 function feature_overview_cli {
+    # function requirements
+    gather_information_server
+    gather_information_network
+    gather_information_distro
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
     # output server overview to shell
     echo "SYSTEM"
     echo "HOST:         ${HOSTNAME}"
@@ -789,6 +918,14 @@ function feature_overview_cli {
 }
 
 function feature_overview_telegram {
+    # function requirements
+    gather_information_server
+    gather_information_network
+    gather_information_distro
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk    
+
     # create message for telegram
     TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:                  <code>${HOSTNAME}</code>\\n<b>OS</b>:                      <code>${OPERATING_SYSTEM}</code>\\n<b>Distro</b>:               <code>${DISTRO} ${DISTRO_VERSION}</code>\\n<b>Kernel</b>:              <code>${KERNEL_NAME} ${KERNEL_VERSION}</code>\\n<b>Architecture</b>:  <code>${ARCHITECTURE}</code>\\n<b>Uptime</b>:             <code>${UPTIME}</code>\\n\\n<b>Internal IP</b>:\\n<code>${INTERNAL_IP_ADDRESS}</code>\\n\\n<b>External IP</b>:\\n<code>${EXTERNAL_IP_ADDRESS}</code>\\n\\n<b>Load</b>:                  <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:           <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:                   <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
 
@@ -800,6 +937,12 @@ function feature_overview_telegram {
 }
 
 function feature_metrics_cli {
+    # function requirements
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
     # output server metrics to shell
     echo "HOST:     ${HOSTNAME}"
     echo "UPTIME:   ${UPTIME}"
@@ -812,6 +955,12 @@ function feature_metrics_cli {
 }
 
 function feature_metrics_telegram {
+    # function requirements
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
     # create message for telegram
     TELEGRAM_MESSAGE="$(echo -e "<b>Host</b>:        <code>${HOSTNAME}</code>\\n<b>Uptime</b>:  <code>${UPTIME}</code>\\n\\n<b>Load</b>:         <code>${COMPLETE_LOAD}</code>\\n<b>Memory</b>:  <code>${USED_MEMORY} M / ${TOTAL_MEMORY} M (${CURRENT_MEMORY_PERCENTAGE_ROUNDED}%)</code>\\n<b>Disk</b>:          <code>${CURRENT_DISK_USAGE} / ${TOTAL_DISK_SIZE} (${CURRENT_DISK_PERCENTAGE}%)</code>")"
 
@@ -823,6 +972,13 @@ function feature_metrics_telegram {
 }
 
 function feature_alert_cli {
+    # function requirements
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+    gather_metrics_threshold
+
     # check whether the current server load exceeds the threshold and alert if true. Output server alert status to shell.
     if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         echo -e "[!] SERVER LOAD:\\tA current server load of ${CURRENT_LOAD_PERCENTAGE_ROUNDED}% exceeds the threshold of ${THRESHOLD_LOAD}."
@@ -847,6 +1003,13 @@ function feature_alert_cli {
 }
 
 function feature_alert_telegram {
+    # function requirements
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+    gather_metrics_threshold
+
     # check whether the current server load exceeds the threshold and alert if true
     if [ "${CURRENT_LOAD_PERCENTAGE_ROUNDED}" -ge "${THRESHOLD_LOAD_NUMBER}" ]; then
         # create message for Telegram
@@ -879,18 +1042,17 @@ function feature_alert_telegram {
 }
 
 function feature_updates_cli {
+    # function requirements
+    gather_updates
+
     # notify user when there are no updates
     if [ -z "${AVAILABLE_UPDATES}" ]; then
-        echo
         echo "There are no updates available."
-        echo
     else
         # notify user when there are updates available
-        echo
         echo "The following updates are available:"
         echo
         echo "${AVAILABLE_UPDATES}"
-        echo
     fi
 
     # exit when done
@@ -898,6 +1060,10 @@ function feature_updates_cli {
 }
 
 function feature_updates_telegram {
+    # function requirements
+    gather_information_server
+    gather_updates
+
     # do nothing if there are no updates
     if [ -z "${AVAILABLE_UPDATES}" ]; then
         exit 0
@@ -915,6 +1081,50 @@ function feature_updates_telegram {
         # call method_telegram
         method_telegram
     fi
+
+    # exit when done
+    exit 0
+}
+
+function feature_eol_cli {
+    # function requirements
+    gather_eol
+
+    # first check on TBA entries, then check whether epoch difference is positive or negative
+    if [ "${!EOL_OS_NAME}" == 'TBA' ]; then
+        echo '[i] The EOL date of this operating system has not been added to the database yet. Try again later.'
+    else
+        if [[ "${EPOCH_DIFFERENCE}" -lt '0' ]]; then
+            echo "[!] This operating system is end-of-life since ${!EOL_OS_NAME}."
+        elif [[ "${EPOCH_DIFFERENCE}" -gt '0' ]]; then
+            echo "[i] This operating system is supported $(( ${EPOCH_DIFFERENCE} / 86400 )) more days (until ${!EOL_OS_NAME})."
+        fi
+    fi
+}
+
+function feature_eol_telegram {
+    # function requirements
+    gather_information_server
+    gather_eol
+
+    # do nothing if eol date isn't in database
+    if [ "${!EOL_OS_NAME}" == 'TBA' ]; then
+        exit 0
+    else
+        # give eol notice around 6, 3 and 1 month before eol, and more frequently if its less than 1 month (depends on EOL_CRON parameter)
+        if [[ "${EPOCH_DIFFERENCE}" -lt '0' ]]; then
+            TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>EOL NOTICE: ${HOSTNAME}</b>\\nThis operating system is end-of-life since ${!EOL_OS_NAME}.")"
+        elif [[ "${EPOCH_DIFFERENCE}" -ge '14802000' ]] && [[ "${EPOCH_DIFFERENCE}" -lt '15552000' ]]; then
+            TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>EOL NOTICE: ${HOSTNAME}</b>\\nThis operating system will be end-of-life in $(( ${EPOCH_DIFFERENCE} / 86400 )) days (on ${!EOL_OS_NAME}).")"
+        elif [[ "${EPOCH_DIFFERENCE}" -ge '7026000' ]] && [[ "${EPOCH_DIFFERENCE}" -lt '7776000' ]]; then
+            TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>EOL NOTICE: ${HOSTNAME}</b>\\nThis operating system will be end-of-life in $(( ${EPOCH_DIFFERENCE} / 86400 )) days (on ${!EOL_OS_NAME}).")"
+        elif [[ "${EPOCH_DIFFERENCE}" -ge '1' ]] && [[ "${EPOCH_DIFFERENCE}" -lt '5184000' ]]; then
+            TELEGRAM_MESSAGE="$(echo -e "\xE2\x9A\xA0 <b>EOL NOTICE: ${HOSTNAME}</b>\\nThis operating system will be end-of-life in $(( ${EPOCH_DIFFERENCE} / 86400 )) days (on ${!EOL_OS_NAME}).")"
+        fi
+    fi
+
+    # call method_telegram
+    method_telegram
 
     # exit when done
     exit 0
@@ -965,13 +1175,15 @@ function serverbot_main {
     # check argument validity
     requirement_argument_validity
 
-    # options
+    # call relevant functions based on arguments
     if [ "${ARGUMENT_VERSION}" == '1' ]; then
         serverbot_version
     elif [ "${ARGUMENT_HELP}" == '1' ]; then
         serverbot_help
     elif [ "${ARGUMENT_CRON}" == '1' ]; then
         serverbot_cron
+    elif [ "${ARGUMENT_VALIDATE}" == '1' ]; then
+        serverbot_validate
     elif [ "${ARGUMENT_INSTALL}" == '1' ]; then
         serverbot_install_check
     elif [ "${ARGUMENT_UPGRADE}" == '1' ]; then
@@ -982,92 +1194,35 @@ function serverbot_main {
         serverbot_self_upgrade
     elif [ "${ARGUMENT_UNINSTALL}" == '1' ]; then
         serverbot_uninstall
-    # feature overview; method cli
     elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        gather_information_server
-        gather_information_network
-        gather_information_distro
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
         feature_overview_cli
-    # feature overview; method telegram
     elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        gather_information_server
-        gather_information_network
-        gather_information_distro
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
         feature_overview_telegram
-    # feature overview; method email
     elif [ "${ARGUMENT_OVERVIEW}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
-    # feature metrics; method cli
     elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        gather_information_server
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
         feature_metrics_cli
-    # feature metrics; method telegram
     elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        gather_information_server
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
         feature_metrics_telegram
-    # feature metrics; method email
     elif [ "${ARGUMENT_METRICS}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
-    # feature alert; method cli
     elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        gather_information_server
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
-        gather_metrics_threshold
         feature_alert_cli
-    # feature alert; method telegram
     elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        gather_information_server
-        gather_metrics_cpu
-        gather_metrics_memory
-        gather_metrics_disk
-        gather_metrics_threshold
         feature_alert_telegram
-    # feature alert; method email
     elif [ "${ARGUMENT_ALERT}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
-    # feature updates; method cli
     elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        gather_updates
         feature_updates_cli
-    # feature updates; method telegram
     elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        gather_information_server
-        gather_updates
         feature_updates_telegram
-    # feature updates; method email
     elif [ "${ARGUMENT_UPDATES}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
-    # feature login; method cli
-    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        error_not_yet_implemented
-    # feature login; method telegram
-    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        error_not_yet_implemented
-    # feature login; method email
-    elif [ "${ARGUMENT_LOGIN}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
-        error_not_yet_implemented
-    # feature outage; method cli
-    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
-        error_not_yet_implemented
-    # feature outage; method telegram
-    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
-        error_not_yet_implemented
-    # feature outage; method email
-    elif [ "${ARGUMENT_OUTAGE}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
+    elif [ "${ARGUMENT_EOL}" == '1' ] && [ "${ARGUMENT_CLI}" == '1' ]; then
+        feature_eol_cli
+    elif [ "${ARGUMENT_EOL}" == '1' ] && [ "${ARGUMENT_TELEGRAM}" == '1' ]; then
+        feature_eol_telegram
+    elif [ "${ARGUMENT_EOL}" == '1' ] && [ "${ARGUMENT_EMAIL}" == '1' ]; then
         error_not_yet_implemented
     elif [ "${ARGUMENT_NONE}" == '1' ]; then
         error_invalid_option
@@ -1078,5 +1233,4 @@ function serverbot_main {
 # CALL MAIN FUNCTION
 #############################################################################
 
-# call main function
 serverbot_main
