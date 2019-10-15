@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.1.1-STABLE (24-09-2019)
+# Version 1.1.2-STABLE (15-10-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.1.1'
+SERVERBOT_VERSION='1.1.2'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -840,7 +840,7 @@ function gather_updates {
     # gather updates on modern rhel based distributions
     if [ "${PACKAGE_MANAGER}" == "dnf" ]; then
         # list with available updates to variable AVAILABLE_UPDATES
-        AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Loading\>//g')"
+        AVAILABLE_UPDATES="$(dnf check-update | grep -v plugins | awk '(NR >=1) {print $1;}' | grep '^[[:alpha:]]' | sed 's/\<Last\>//g')"
         # outputs the character length of AVAILABLE_UPDATES in LENGTH_UPDATES
         LENGTH_UPDATES="${#AVAILABLE_UPDATES}"
     # gather updates on older rhel based distributions

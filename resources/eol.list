@@ -6,7 +6,7 @@
 # CENTOS
 # https://en.wikipedia.org/wiki/CentOS#End-of-support_schedule
 EOL_CENTOS7='2024-06-30'
-EOL_CENTOS8='TBA'
+EOL_CENTOS8='2029-05-01'
 EOL_CENTOS9='TBA'
 
 # FEDORA
