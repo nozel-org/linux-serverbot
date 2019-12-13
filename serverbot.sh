@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################################################
-# Version 1.1.2-STABLE (15-10-2019)
+# Version 1.2.0-UNSTABLE (20-10-2019)
 #############################################################################
 
 #############################################################################
@@ -20,7 +20,7 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.1.2'
+SERVERBOT_VERSION='1.2.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /etc/serverbot/serverbot.conf ]; then
@@ -41,7 +41,7 @@ else
     THRESHOLD_DISK='80%'
 
     # and default to stable branch
-    SERVERBOT_BRANCH='stable'
+    SERVERBOT_BRANCH='unstable'
 fi
 
 #############################################################################
@@ -281,6 +281,8 @@ function requirement_os {
         PACKAGE_MANAGER='yum'
     elif [ "$(command -v apt-get)" ]; then
         PACKAGE_MANAGER='apt-get'
+    elif [ "$(command -v pkg)" ]; then
+        PACKAGE_MANAGER='pkg'
     #elif [ "$(command -v apk)" ]; then
         #PACKAGE_MANAGER='apk'
     else
@@ -575,6 +577,8 @@ function serverbot_install {
         yum install wget bc --assumeyes --quiet
     elif [ "${PACKAGE_MANAGER}" == "apt-get" ]; then
         apt-get install aptitude bc curl --assume-yes --quiet
+    elif [ "${PACKAGE_MANAGER}" == "pkg" ]; then
+        pkg install bc wget
     #elif [ "${PACKAGE_MANAGER}" == "apk" ]; then
         #apk add # not sure about the rest
     fi
